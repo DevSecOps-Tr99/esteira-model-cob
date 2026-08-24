@@ -1,0 +1,70 @@
+name: JCL Pipeline
+
+on:
+  pull_request:
+    paths:
+      - "jcl/**"
+      - "proc/**"
+      - "cobol/**"
+      - "config/**"
+      - "esteira_model_cob/**"
+      - "tools/proleap-runner/**"
+      - "tests/**"
+  push:
+    branches: [main, develop]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar a esteira
+        run: pip install -e ".[dev]"
+
+      - name: Gitleaks - scan de segredos
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Java (para o wrapper do ProLeap)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Testes (pytest)
+        run: pytest -q
+
+      # continue-on-error: os 3 JCLs de demonstracao incluem de proposito um
+      # cenario bloqueado (poc003) - o pytest acima ja testa esse bloqueio
+      # via assert; estes dois passos sao a saida "ao vivo" da demo descrita
+      # em docs/poc-demo.md, nao o gate de saude do repositorio.
+      - name: Validar JCLs (Rules Engine + Quality Gate)
+        continue-on-error: true
+        run: python -m esteira_model_cob validate jcl/
+
+      - name: Simular submissao (MockZosAdapter)
+        continue-on-error: true
+        run: python -m esteira_model_cob simulate jcl/
+
+      - name: Gerar JCL Pipeline Report
+        if: always()
+        run: |
+          for jcl in jcl/*.jcl; do
+            python -m esteira_model_cob report "$jcl"
+          done
+
+      - name: Upload dos relatorios
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jcl-pipeline-reports
+          path: reports/
