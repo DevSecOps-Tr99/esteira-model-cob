@@ -45,10 +45,35 @@ precisa ser levantada com mais profundidade (código-fonte/testes do próprio
 projeto) antes de escrever essas regras — registrado aqui em vez de
 adivinhado, para não travar a build com métodos inexistentes.
 
-## Por que rodar via CI e não localmente
+## O proleap-cobol-parser não está no Maven Central
+
+Descoberto na primeira execução real (fora desta máquina de dev, numa VM
+com JDK/Maven instalados — ver `ambiente-validacao.md`): o
+`io.github.uwol:proleap-cobol-parser` **não é publicado no Maven Central em
+nenhuma versão** — nem a `4.0.0` que o `pom.xml` do projeto declara hoje,
+nem a última tag realmente lançada (`v2.4.0`). Confirmado consultando
+`https://repo.maven.apache.org` e a Maven Central Search API diretamente
+(ambos retornam vazio/404 para as duas versões).
+
+A biblioteca só existe como código-fonte no GitHub — é preciso compilar e
+instalar no repositório Maven local (`~/.m2`) antes de qualquer `mvn` que a
+declare como dependência conseguir resolvê-la. Isso está resolvido por
+`scripts/install_proleap.sh`, que clona o repositório num commit fixo
+(`d1bfe75b...`, escolhido por não haver uma tag alinhada com a versão atual
+do `pom.xml`) e roda `mvn -DskipTests install`. O workflow do GitHub Actions
+chama esse script logo após o `actions/setup-java`, antes do `pytest`.
+
+`esteira_model_cob/cobol_ast/proleap_client.py` expõe `is_available()`, que
+checa `java`, `mvn` **e** a presença do jar em `~/.m2` — usado tanto pelo
+`tests/test_proleap_client.py` (skip automático) quanto por `dump_ast()`
+(erro claro apontando para o script, em vez de uma falha genérica do
+Maven).
+
+## Por que rodar via CI/VM e não nesta máquina de dev
 
 Esta máquina de desenvolvimento não tem `java`/`mvn` instalados. O teste
 `tests/test_proleap_client.py` é pulado automaticamente nesse caso — ele
-roda de verdade no workflow do GitHub Actions, que instala o JDK sob demanda
-via `actions/setup-java` (runners hospedados já trazem isso pronto, sem
-precisar de instalação manual em cada máquina de desenvolvedor).
+roda de verdade no workflow do GitHub Actions (que instala o JDK sob
+demanda via `actions/setup-java`) e na VM de validação
+(`ambiente-validacao.md`), onde o bug acima foi encontrado e corrigido via
+`hotfix/0.1.1`.
