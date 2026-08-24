@@ -18,7 +18,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # fetch-depth: 0 (historico completo) - o gitleaks-action faz um git
+      # log entre o "before" e o "after" SHA do push; num checkout raso
+      # (padrao, 1 commit) ele nao consegue resolver esse range quando o
+      # push traz um merge com historico mais longo (ex.: release -> main).
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
