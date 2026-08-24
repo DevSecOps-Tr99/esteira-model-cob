@@ -94,6 +94,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Ubuntu 24.04 marca o Python do sistema como "externally managed"
+      # (PEP 668) e nao tem o comando "python" puro (so "python3") - uma
+      # venv dedicada evita as duas coisas para o resto do job.
+      - name: Preparar ambiente Python (venv)
+        run: |
+          python3 -m venv "$HOME/.venvs/esteira-model-cob"
+          echo "$HOME/.venvs/esteira-model-cob/bin" >> "$GITHUB_PATH"
+
       - name: Instalar a esteira
         run: pip install -e ".[dev]"
 
