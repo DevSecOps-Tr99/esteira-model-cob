@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<title>Os 3 gates - esteira-model-cob</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+  --bg: #ffffff; --fg: #1a1a1a; --muted: #5b6270; --border: #e2e5eb;
+  --code-bg: #f4f5f7; --accent: #2f5fd6; --nav-bg: #f7f8fa;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #14161a; --fg: #e7e9ec; --muted: #9aa1ad; --border: #2b2f37;
+    --code-bg: #1d2026; --accent: #7fa4ff; --nav-bg: #1a1d23; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+  font-family: -apple-system, Segoe UI, Helvetica, Arial, sans-serif;
+  display: flex; min-height: 100vh; }
+nav { width: 260px; flex-shrink: 0; background: var(--nav-bg); border-right: 1px solid var(--border);
+  padding: 24px 16px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+nav h1 { font-size: 15px; margin: 0 0 16px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+nav a { display: block; padding: 6px 8px; border-radius: 6px; color: var(--fg); text-decoration: none; font-size: 14px; }
+nav a:hover { background: var(--code-bg); }
+nav a.active { background: var(--accent); color: #fff; }
+main { flex: 1; max-width: 860px; margin: 0 auto; padding: 40px 32px 80px; overflow-x: auto; }
+h1, h2, h3 { line-height: 1.3; }
+h1 { font-size: 28px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+h2 { font-size: 21px; margin-top: 40px; }
+h3 { font-size: 17px; }
+p, li { line-height: 1.6; }
+a { color: var(--accent); }
+code { background: var(--code-bg); padding: 2px 5px; border-radius: 4px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+pre code { background: none; padding: 0; }
+table { border-collapse: collapse; width: 100%; margin: 16px 0; overflow-x: auto; display: block; }
+th, td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; font-size: 14px; }
+th { background: var(--code-bg); }
+blockquote { border-left: 3px solid var(--accent); margin: 0; padding: 4px 16px; color: var(--muted); }
+.mermaid-note { color: var(--muted); font-size: 13px; font-style: italic; }
+</style>
+</head>
+<body>
+<nav><h1>esteira-model-cob</h1><a href="index.html" class="">esteira-model-cob</a><a href="como-rodar-manualmente.html" class="">Como rodar manualmente</a><a href="arquitetura.html" class="">Arquitetura</a><a href="gates.html" class="active">Os 3 gates</a><a href="seguranca.html" class="">Seguranca</a><a href="integracao-zos.html" class="">Integracao z/OS</a><a href="gitflow.html" class="">Gitflow</a><a href="ambiente-validacao.html" class="">Ambiente de validacao (VM)</a><a href="poc-demo.html" class="">Roteiro de demo</a><a href="kickoff-perguntas.html" class="">Perguntas de kickoff</a></nav>
+<main>
+<h1 id="os-3-gates">Os 3 gates</h1>
+<p>Baseado no desenho "Esteira de JCL / Esteira Mainframe" hoje em uso — a nova
+esteira precisa reproduzir estes 3 gates, não apenas "GitHub executando um
+arquivo".</p>
+<h2 id="1-gate-de-qualidade">1. Gate de Qualidade</h2>
+<p>Equivalente ao "Dresscode" atual. Implementado em <code>rules_engine.py</code> +
+<code>quality_gate.py</code>, antes do build/deploy:</p>
+<ul>
+<li>Sintaxe JCL: JOB/EXEC/DD válidos, PROC resolvida (<code>parser.py</code>)</li>
+<li>Naming convention de dataset (<code>JCL002</code>, contra <code>config/datasets.yml</code>)</li>
+<li>Ausência de comandos proibidos / programas fora da lista permitida (<code>JCL004</code>)</li>
+<li>MSGCLASS obrigatório (<code>JCL005</code>)</li>
+<li>Score de qualidade (0-100), publicado no JCL Pipeline Report</li>
+</ul>
+<h2 id="2-gate-de-execucao">2. Gate de Execução</h2>
+<p>Equivalente ao gate hoje "em desenvolvimento" no desenho atual —
+<code>simulator.py</code> só chama o adapter de execução se o Quality Gate não estiver
+<code>FAILED</code>:</p>
+<pre><code>PR aprovado → JCL validado → dry-run (simulate) → dependências (proc/) → Execution Gate → Submit Job
+</code></pre>
+<p>No z/OS real (Fase 2), o próprio JES pode validar o JCL sem executar via
+<code>TYPRUN=SCAN</code> no JOB statement — ver <code>integracao-zos.md</code>. Isso torna a
+validação independente da nossa própria interpretação.</p>
+<h2 id="3-gate-pre-producao">3. Gate pré-produção</h2>
+<p>Mapeado 1:1 para GitHub Environments:</p>
+<pre><code class="language-yaml">environment: TU
+environment: TI
+environment: PRD
+</code></pre>
+<p>PRD exige required reviewer, change aprovado, Quality Gate e testes
+aprovados, artefato imutável — ver <code>config/environments.yml</code> e
+<code>gitflow.md</code>.</p>
+<h2 id="jcl-pipeline-report">JCL Pipeline Report</h2>
+<p>Não existe no desenho atual — evidência gerada por <code>report.py</code> para
+Auditoria/Risco/Change: commit, autor, resultado de cada validação, score,
+job/RC por ambiente e veredito final (<code>APPROVED</code> / <code>BLOCKED</code>).</p>
+<p>Exemplo (gerado por <code>python -m esteira_model_cob report jcl/poc003_bloqueado.jcl</code>):</p>
+<pre><code>JCL PIPELINE REPORT
+========================================
+
+JCL .................. jcl/poc003_bloqueado.jcl
+Job name ............. POC003
+
+QUALITY
+----------------------------------------
+[CRITICAL] JCL003 prod_dataset_delete: Exclusao de dataset em qualifier de producao (PROD.*) e proibida.
+Score ................ 0/100
+
+SECURITY
+----------------------------------------
+Status ............... FAILED
+  BLOQUEANTE: JCL003 - Exclusao de dataset em qualifier de producao (PROD.*) e proibida.
+
+EXECUTION
+----------------------------------------
+Execucao ............. NAO EXECUTADO (Bloqueado pelo Quality/Security Gate antes da submissao.)
+
+STATUS
+========================================
+BLOCKED
+</code></pre>
+</main>
+</body>
+</html>

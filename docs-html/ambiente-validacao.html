@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<title>Ambiente de validacao (VM) - esteira-model-cob</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+  --bg: #ffffff; --fg: #1a1a1a; --muted: #5b6270; --border: #e2e5eb;
+  --code-bg: #f4f5f7; --accent: #2f5fd6; --nav-bg: #f7f8fa;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #14161a; --fg: #e7e9ec; --muted: #9aa1ad; --border: #2b2f37;
+    --code-bg: #1d2026; --accent: #7fa4ff; --nav-bg: #1a1d23; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+  font-family: -apple-system, Segoe UI, Helvetica, Arial, sans-serif;
+  display: flex; min-height: 100vh; }
+nav { width: 260px; flex-shrink: 0; background: var(--nav-bg); border-right: 1px solid var(--border);
+  padding: 24px 16px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+nav h1 { font-size: 15px; margin: 0 0 16px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+nav a { display: block; padding: 6px 8px; border-radius: 6px; color: var(--fg); text-decoration: none; font-size: 14px; }
+nav a:hover { background: var(--code-bg); }
+nav a.active { background: var(--accent); color: #fff; }
+main { flex: 1; max-width: 860px; margin: 0 auto; padding: 40px 32px 80px; overflow-x: auto; }
+h1, h2, h3 { line-height: 1.3; }
+h1 { font-size: 28px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+h2 { font-size: 21px; margin-top: 40px; }
+h3 { font-size: 17px; }
+p, li { line-height: 1.6; }
+a { color: var(--accent); }
+code { background: var(--code-bg); padding: 2px 5px; border-radius: 4px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+pre code { background: none; padding: 0; }
+table { border-collapse: collapse; width: 100%; margin: 16px 0; overflow-x: auto; display: block; }
+th, td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; font-size: 14px; }
+th { background: var(--code-bg); }
+blockquote { border-left: 3px solid var(--accent); margin: 0; padding: 4px 16px; color: var(--muted); }
+.mermaid-note { color: var(--muted); font-size: 13px; font-style: italic; }
+</style>
+</head>
+<body>
+<nav><h1>esteira-model-cob</h1><a href="index.html" class="">esteira-model-cob</a><a href="como-rodar-manualmente.html" class="">Como rodar manualmente</a><a href="arquitetura.html" class="">Arquitetura</a><a href="gates.html" class="">Os 3 gates</a><a href="seguranca.html" class="">Seguranca</a><a href="integracao-zos.html" class="">Integracao z/OS</a><a href="gitflow.html" class="">Gitflow</a><a href="ambiente-validacao.html" class="active">Ambiente de validacao (VM)</a><a href="poc-demo.html" class="">Roteiro de demo</a><a href="kickoff-perguntas.html" class="">Perguntas de kickoff</a></nav>
+<main>
+<h1 id="ambiente-de-validacao-vm">Ambiente de validação (VM)</h1>
+<h2 id="por-que-precisamos-de-uma-vm">Por que precisamos de uma VM</h2>
+<p>Esta máquina de desenvolvimento tem restrições reais, encontradas durante a
+construção desta POC:</p>
+<ul>
+<li>Sem <code>winget</code>/<code>choco</code>/<code>scoop</code> — não dá para instalar JDK, Maven ou o <code>gh</code>
+  CLI sem um instalador manual.</li>
+<li>Sem <code>java</code>/<code>mvn</code> no PATH — a integração com o <strong>ProLeap COBOL Parser</strong>
+  (<code>tools/proleap-runner/</code>) só roda no GitHub Actions, nunca localmente
+  (<code>tests/test_proleap_client.py</code> fica <code>SKIPPED</code> aqui).</li>
+<li>O serviço <code>ssh-agent</code> do Windows vem <strong>parado e desabilitado</strong> por
+  política — cada uso da chave SSH exige reabilitar o serviço manualmente.</li>
+</ul>
+<p>Nenhum desses blocos impede a POC (o CI cobre o que a máquina local não
+cobre), mas também significa que <strong>ninguém consegue rodar a esteira
+completa, ponta a ponta, fora do GitHub Actions</strong> para validar ou
+demonstrar ao vivo. Uma VM de validação resolve isso e formaliza o nó
+"Self-hosted Runner dentro da rede do banco" que já existia no desenho de
+arquitetura original.</p>
+<h2 id="proposta">Proposta</h2>
+<p>Uma VM (local via Hyper-V/VirtualBox/WSL2, ou uma VM de nuvem já
+disponível para o time) com:</p>
+<ul>
+<li>Git</li>
+<li>Python 3.12+</li>
+<li>JDK 17 (Temurin) + Maven — para rodar o <code>AstDump.java</code> de verdade</li>
+<li>Registrada como <strong>GitHub Actions self-hosted runner</strong> deste repositório</li>
+</ul>
+<h2 id="o-que-essa-vm-prova-que-o-github-hosted-runner-nao-prova">O que essa VM prova que o GitHub-hosted runner não prova</h2>
+<table>
+<thead>
+<tr>
+<th>Capacidade</th>
+<th>GitHub-hosted runner (<code>ubuntu-latest</code>)</th>
+<th>VM self-hosted</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Rodar <code>pytest</code> e o Rules Engine</td>
+<td>Sim</td>
+<td>Sim</td>
+</tr>
+<tr>
+<td>Rodar o ProLeap (Java/Maven)</td>
+<td>Sim, via <code>actions/setup-java</code></td>
+<td>Sim</td>
+</tr>
+<tr>
+<td>Alcançar rede interna (mainframe, z/OSMF)</td>
+<td><strong>Não</strong></td>
+<td><strong>Sim</strong> — é o pré-requisito real da Fase 2</td>
+</tr>
+<tr>
+<td>Demonstrar a esteira rodando "dentro da rede do banco"</td>
+<td>Não</td>
+<td>Sim</td>
+</tr>
+</tbody>
+</table>
+<p>Ou seja: a VM não substitui o CI hospedado pela GitHub — ela é o próximo
+passo necessário quando a Fase 2 precisar falar com o z/OSMF/Zowe real
+(<code>docs/integracao-zos.md</code>), e serve desde já como ambiente limpo para
+validar manualmente tudo o que esta máquina de desenvolvimento não
+consegue (Java/Maven, <code>gh</code> CLI, <code>ssh-agent</code> sem restrição de política).</p>
+<h2 id="setup">Setup</h2>
+<pre><code class="language-bash">git clone git@github.com:DevOpsRaizOficial/esteira-model-cob.git
+cd esteira-model-cob
+bash scripts/setup_dev_env.sh
+
+pytest -q
+# com java/mvn presentes, test_proleap_client.py roda de verdade (nao skip)
+
+python -m esteira_model_cob validate jcl/
+python -m esteira_model_cob simulate jcl/
+python -m esteira_model_cob cobol-ast cobol/payroll_sample.cbl
+</code></pre>
+<p>Para registrar como self-hosted runner, seguir o fluxo padrão do GitHub em
+<strong>Settings → Actions → Runners → New self-hosted runner</strong> no repositório, e
+trocar <code>runs-on: ubuntu-latest</code> por <code>runs-on: self-hosted</code> no job desejado
+de <code>.github/workflows/jcl-validation.yml</code> quando a Fase 2 precisar de
+alcance de rede interna.</p>
+<h2 id="status">Status</h2>
+<p>A VM <code>VM-COBOL-POC</code> está registrada como self-hosted runner
+(<code>vm-cobol-poc</code>, labels <code>self-hosted,linux,x64,vm-cobol-poc</code>), rodando
+como serviço systemd (<code>actions.runner.DevSecOps-Tr99-esteira-model-cob.vm-cobol-poc.service</code>,
+sobrevive a reboot).</p>
+<p>O job <code>publish</code> em <code>.github/workflows/jcl-validation.yml</code> roda nela a cada
+<code>push</code> em <code>develop</code>/<code>release/*</code>/<code>hotfix/*</code>/<code>main</code> (nunca em PR), gated por
+GitHub Environment (<code>TU</code>/<code>TI</code>/<code>PRD</code>, mapeado 1:1 pelo nome da branch, ver
+<code>gitflow.md</code> e <code>config/environments.yml</code>). Ele repete testes/validate/
+simulate/report já rodando com Java/Maven reais (<code>test_proleap_client.py</code>
+não é mais <code>SKIPPED</code> aqui) e "publica" o commit validado em
+<code>~/publicado/&lt;AMBIENTE&gt;/&lt;run&gt;-&lt;sha&gt;/</code> na própria VM, com um <code>MANIFEST.txt</code>
+(commit, autor, ambiente, timestamp) — o equivalente desta fase a mover o
+membro para a PDS do ambiente; a Fase 2 troca isso pela submissão real via
+z/OSMF (<code>integracao-zos.md</code>).</p>
+</main>
+</body>
+</html>

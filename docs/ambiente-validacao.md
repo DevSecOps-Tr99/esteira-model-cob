@@ -65,3 +65,21 @@ Para registrar como self-hosted runner, seguir o fluxo padrão do GitHub em
 trocar `runs-on: ubuntu-latest` por `runs-on: self-hosted` no job desejado
 de `.github/workflows/jcl-validation.yml` quando a Fase 2 precisar de
 alcance de rede interna.
+
+## Status
+
+A VM `VM-COBOL-POC` está registrada como self-hosted runner
+(`vm-cobol-poc`, labels `self-hosted,linux,x64,vm-cobol-poc`), rodando
+como serviço systemd (`actions.runner.DevSecOps-Tr99-esteira-model-cob.vm-cobol-poc.service`,
+sobrevive a reboot).
+
+O job `publish` em `.github/workflows/jcl-validation.yml` roda nela a cada
+`push` em `develop`/`release/*`/`hotfix/*`/`main` (nunca em PR), gated por
+GitHub Environment (`TU`/`TI`/`PRD`, mapeado 1:1 pelo nome da branch, ver
+`gitflow.md` e `config/environments.yml`). Ele repete testes/validate/
+simulate/report já rodando com Java/Maven reais (`test_proleap_client.py`
+não é mais `SKIPPED` aqui) e "publica" o commit validado em
+`~/publicado/<AMBIENTE>/<run>-<sha>/` na própria VM, com um `MANIFEST.txt`
+(commit, autor, ambiente, timestamp) — o equivalente desta fase a mover o
+membro para a PDS do ambiente; a Fase 2 troca isso pela submissão real via
+z/OSMF (`integracao-zos.md`).

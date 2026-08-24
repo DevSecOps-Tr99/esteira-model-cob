@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<title>Roteiro de demo - esteira-model-cob</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+  --bg: #ffffff; --fg: #1a1a1a; --muted: #5b6270; --border: #e2e5eb;
+  --code-bg: #f4f5f7; --accent: #2f5fd6; --nav-bg: #f7f8fa;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #14161a; --fg: #e7e9ec; --muted: #9aa1ad; --border: #2b2f37;
+    --code-bg: #1d2026; --accent: #7fa4ff; --nav-bg: #1a1d23; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+  font-family: -apple-system, Segoe UI, Helvetica, Arial, sans-serif;
+  display: flex; min-height: 100vh; }
+nav { width: 260px; flex-shrink: 0; background: var(--nav-bg); border-right: 1px solid var(--border);
+  padding: 24px 16px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+nav h1 { font-size: 15px; margin: 0 0 16px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+nav a { display: block; padding: 6px 8px; border-radius: 6px; color: var(--fg); text-decoration: none; font-size: 14px; }
+nav a:hover { background: var(--code-bg); }
+nav a.active { background: var(--accent); color: #fff; }
+main { flex: 1; max-width: 860px; margin: 0 auto; padding: 40px 32px 80px; overflow-x: auto; }
+h1, h2, h3 { line-height: 1.3; }
+h1 { font-size: 28px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+h2 { font-size: 21px; margin-top: 40px; }
+h3 { font-size: 17px; }
+p, li { line-height: 1.6; }
+a { color: var(--accent); }
+code { background: var(--code-bg); padding: 2px 5px; border-radius: 4px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+pre code { background: none; padding: 0; }
+table { border-collapse: collapse; width: 100%; margin: 16px 0; overflow-x: auto; display: block; }
+th, td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; font-size: 14px; }
+th { background: var(--code-bg); }
+blockquote { border-left: 3px solid var(--accent); margin: 0; padding: 4px 16px; color: var(--muted); }
+.mermaid-note { color: var(--muted); font-size: 13px; font-style: italic; }
+</style>
+</head>
+<body>
+<nav><h1>esteira-model-cob</h1><a href="index.html" class="">esteira-model-cob</a><a href="como-rodar-manualmente.html" class="">Como rodar manualmente</a><a href="arquitetura.html" class="">Arquitetura</a><a href="gates.html" class="">Os 3 gates</a><a href="seguranca.html" class="">Seguranca</a><a href="integracao-zos.html" class="">Integracao z/OS</a><a href="gitflow.html" class="">Gitflow</a><a href="ambiente-validacao.html" class="">Ambiente de validacao (VM)</a><a href="poc-demo.html" class="active">Roteiro de demo</a><a href="kickoff-perguntas.html" class="">Perguntas de kickoff</a></nav>
+<main>
+<h1 id="roteiro-de-demonstracao">Roteiro de demonstração</h1>
+<p>A POC não usa 1 JCL — usa 3, para provar que a esteira <strong>governa</strong> o JCL e
+não apenas o executa.</p>
+<table>
+<thead>
+<tr>
+<th>JCL</th>
+<th>Cenário</th>
+<th>Resultado esperado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>jcl/poc001_sucesso.jcl</code></td>
+<td><code>IEFBR14</code> criando dataset dentro do padrão <code>ESTM.&lt;APP&gt;.&lt;ENV&gt;.&lt;RESOURCE&gt;</code></td>
+<td>Quality Gate PASS 100/100, Security Gate PASSED, RC 0000</td>
+</tr>
+<tr>
+<td><code>jcl/poc002_warning.jcl</code></td>
+<td>Dataset fora do padrão (<code>POC.TEST.DATA</code>)</td>
+<td>Quality Gate WARNING (90/100), pipeline segue</td>
+</tr>
+<tr>
+<td><code>jcl/poc003_bloqueado.jcl</code></td>
+<td><code>IDCAMS DELETE PROD.*</code></td>
+<td>Security Gate FAILED, regra crítica <code>JCL003</code> (<code>prod_dataset_delete</code>), deploy bloqueado antes do adapter</td>
+</tr>
+</tbody>
+</table>
+<h2 id="passo-a-passo">Passo a passo</h2>
+<pre><code class="language-bash">pip install -e &quot;.[dev]&quot;
+
+# 1. Validação (Rules Engine + Quality Gate)
+python -m esteira_model_cob validate jcl/
+
+# 2. Simulação (MockZosAdapter) - poc003 é bloqueado antes de chegar aqui
+python -m esteira_model_cob simulate jcl/
+
+# 3. Evidência (JCL Pipeline Report) por arquivo
+python -m esteira_model_cob report jcl/poc001_sucesso.jcl
+python -m esteira_model_cob report jcl/poc002_warning.jcl
+python -m esteira_model_cob report jcl/poc003_bloqueado.jcl
+</code></pre>
+<h2 id="roteiro-de-apresentacao-ponta-a-ponta">Roteiro de apresentação ponta a ponta</h2>
+<p>Dev altera JCL no VS Code → <code>git push</code> → Pull Request → GitHub Actions
+(<code>jcl-validation.yml</code>) → Gitleaks (segredos) → Syntax/Quality Gate → Security
+Gate → Simulação (JOBID, RC) → JCL Pipeline Report publicado como artifact
+do job → Deploy TU (<code>develop</code>) → Aprovação TI (<code>release/*</code>) → Aprovação PRD
+(<code>main</code>) → Audit trail (commit, autor, PR, aprovador, artefato, ambiente,
+job, RC, timestamp).</p>
+<h2 id="por-que-o-workflow-nao-falha-de-verdade-no-poc003">Por que o workflow não falha "de verdade" no <code>poc003</code></h2>
+<p>Os passos "Validar JCLs" e "Simular submissão" do workflow usam
+<code>continue-on-error: true</code> de propósito: eles são a saída <em>ao vivo</em> da demo
+(mostrar o bloqueio acontecendo), não o gate de saúde do repositório. Quem
+garante a saúde do código é o <code>pytest</code>, que já testa esse mesmo bloqueio via
+assert (<code>tests/test_rules_engine.py</code>, <code>tests/test_adapters.py</code>) e falha a
+build de verdade se a regra parar de funcionar.</p>
+</main>
+</body>
+</html>
