@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "esteira-model-cob"
-version = "0.1.0"
+version = "0.2.0"
 description = "POC de esteira CI/CD para JCL/COBOL com GitHub Actions e um motor de esteira em Python"
 readme = "README.md"
 requires-python = ">=3.10"
