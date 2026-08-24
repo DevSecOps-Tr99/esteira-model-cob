@@ -63,3 +63,12 @@ apenas a camada de disparo.
 - **Fase 2** — substituição das validações do HexaVision, após inventário e
   classificação completa das regras (técnica, processo, segurança, negócio,
   regulatória) — ver `kickoff-perguntas.md`.
+
+## Ambiente de validação
+
+O GitHub Actions hospedado pela GitHub roda o `pytest` e o wrapper do
+ProLeap (via `actions/setup-java`), mas não alcança rede interna. Para
+provar a esteira rodando "dentro da rede do banco" — o nó "Self-hosted
+Runner" deste diagrama — e para validar manualmente tudo o que uma máquina
+de desenvolvimento corporativa às vezes não permite instalar (JDK, Maven,
+`gh` CLI), ver `ambiente-validacao.md`.
