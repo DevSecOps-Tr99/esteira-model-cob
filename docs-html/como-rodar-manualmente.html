@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<title>Como rodar manualmente - esteira-model-cob</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+  --bg: #ffffff; --fg: #1a1a1a; --muted: #5b6270; --border: #e2e5eb;
+  --code-bg: #f4f5f7; --accent: #2f5fd6; --nav-bg: #f7f8fa;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #14161a; --fg: #e7e9ec; --muted: #9aa1ad; --border: #2b2f37;
+    --code-bg: #1d2026; --accent: #7fa4ff; --nav-bg: #1a1d23; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+  font-family: -apple-system, Segoe UI, Helvetica, Arial, sans-serif;
+  display: flex; min-height: 100vh; }
+nav { width: 260px; flex-shrink: 0; background: var(--nav-bg); border-right: 1px solid var(--border);
+  padding: 24px 16px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+nav h1 { font-size: 15px; margin: 0 0 16px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+nav a { display: block; padding: 6px 8px; border-radius: 6px; color: var(--fg); text-decoration: none; font-size: 14px; }
+nav a:hover { background: var(--code-bg); }
+nav a.active { background: var(--accent); color: #fff; }
+main { flex: 1; max-width: 860px; margin: 0 auto; padding: 40px 32px 80px; overflow-x: auto; }
+h1, h2, h3 { line-height: 1.3; }
+h1 { font-size: 28px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+h2 { font-size: 21px; margin-top: 40px; }
+h3 { font-size: 17px; }
+p, li { line-height: 1.6; }
+a { color: var(--accent); }
+code { background: var(--code-bg); padding: 2px 5px; border-radius: 4px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+pre code { background: none; padding: 0; }
+table { border-collapse: collapse; width: 100%; margin: 16px 0; overflow-x: auto; display: block; }
+th, td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; font-size: 14px; }
+th { background: var(--code-bg); }
+blockquote { border-left: 3px solid var(--accent); margin: 0; padding: 4px 16px; color: var(--muted); }
+.mermaid-note { color: var(--muted); font-size: 13px; font-style: italic; }
+</style>
+</head>
+<body>
+<nav><h1>esteira-model-cob</h1><a href="index.html" class="">esteira-model-cob</a><a href="como-rodar-manualmente.html" class="active">Como rodar manualmente</a><a href="arquitetura.html" class="">Arquitetura</a><a href="gates.html" class="">Os 3 gates</a><a href="seguranca.html" class="">Seguranca</a><a href="integracao-zos.html" class="">Integracao z/OS</a><a href="gitflow.html" class="">Gitflow</a><a href="ambiente-validacao.html" class="">Ambiente de validacao (VM)</a><a href="poc-demo.html" class="">Roteiro de demo</a><a href="kickoff-perguntas.html" class="">Perguntas de kickoff</a></nav>
+<main>
+<h1 id="como-rodar-a-esteira-manualmente">Como rodar a esteira manualmente</h1>
+<p>Sequência de comandos para validar o POC localmente, sem depender do GitHub Actions.</p>
+<h2 id="1-instalar">1. Instalar</h2>
+<pre><code class="language-bash">pip install -e &quot;.[dev]&quot;
+</code></pre>
+<h2 id="2-rodar-os-testes">2. Rodar os testes</h2>
+<pre><code class="language-bash">pytest -q
+</code></pre>
+<p>Esperado: todos os testes passam. <code>tests/test_proleap_client.py</code> aparece como <code>SKIPPED</code> se <code>java</code>/<code>mvn</code> não estiverem no PATH — ele só roda de verdade no GitHub Actions (ou na VM de validação, ver <code>docs/ambiente-validacao.md</code>).</p>
+<h2 id="3-validar-os-jcls">3. Validar os JCLs</h2>
+<pre><code class="language-bash">python -m esteira_model_cob validate jcl/
+</code></pre>
+<p>Esperado (os 3 JCLs de exemplo cobrem os 3 veredictos possíveis):</p>
+<table>
+<thead>
+<tr>
+<th>JCL</th>
+<th>Quality Gate</th>
+<th>Security Gate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>poc001_sucesso.jcl</code></td>
+<td>PASS (100/100)</td>
+<td>PASSED</td>
+</tr>
+<tr>
+<td><code>poc002_warning.jcl</code></td>
+<td>WARNING (90/100) — dataset fora do padrão <code>ESTM.&lt;APP&gt;.&lt;ENV&gt;.&lt;RESOURCE&gt;</code></td>
+<td>PASSED</td>
+</tr>
+<tr>
+<td><code>poc003_bloqueado.jcl</code></td>
+<td>FAILED (0/100) — CRITICAL: delete de dataset em qualifier <code>PROD.*</code></td>
+<td>FAILED</td>
+</tr>
+</tbody>
+</table>
+<p>O comando sai com exit code <code>1</code> por causa do <code>poc003</code> — comportamento esperado, é o que trava o pipeline no CI.</p>
+<h2 id="4-simular-o-deploy">4. Simular o deploy</h2>
+<pre><code class="language-bash">python -m esteira_model_cob simulate jcl/
+</code></pre>
+<p>Esperado: <code>poc001</code> e <code>poc002</code> são "submetidos" ao <code>MockZosAdapter</code> (JOBID + RC <code>0000</code> simulados). <code>poc003</code> é bloqueado <strong>antes</strong> de chegar no adapter, pelo Quality/Security Gate. Exit code <code>1</code>.</p>
+<h2 id="5-gerar-os-relatorios">5. Gerar os relatórios</h2>
+<pre><code class="language-bash">python -m esteira_model_cob report jcl/
+</code></pre>
+<p>Gera um <code>reports/&lt;JOB&gt;_report.txt</code> por JCL (pasta <code>reports/</code> é gitignored). Cada relatório traz quality, security, execução e status final (PASS / WARNING / BLOCKED).</p>
+<h2 id="atalho">Atalho</h2>
+<p><code>scripts/run_local_pipeline.sh</code> roda os passos 3–5 em sequência (sem instalar nem testar).</p>
+<h2 id="proleap-opcional-precisa-de-java-mvn">ProLeap (opcional, precisa de java + mvn)</h2>
+<pre><code class="language-bash">bash scripts/install_proleap.sh
+python -m esteira_model_cob cobol-ast cobol/payroll_sample.cbl
+</code></pre>
+</main>
+</body>
+</html>
