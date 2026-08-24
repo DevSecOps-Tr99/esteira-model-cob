@@ -24,6 +24,14 @@ import io.proleap.cobol.preprocessor.CobolPreprocessor.CobolSourceFormatEnum;
  * (io.proleap.cobol.asg.metamodel.procedure.* e data.datadescription.*),
  * que nao foi confirmada em detalhe nesta primeira entrega - ver
  * docs/seguranca.md.
+ *
+ * Usa Program.getCompilationUnit() SEM argumento (pega a primeira unidade
+ * de compilacao registrada) em vez de getCompilationUnit(nome): o overload
+ * com nome faz lookup por Program.compilationUnits.get(nome.toLowerCase())
+ * (ver ProgramImpl.java no proprio proleap-cobol-parser), cuja chave real
+ * de registro nao e o texto do PROGRAM-ID e nao foi confirmada - o overload
+ * sem argumento evita depender disso, correto para o caso de 1 arquivo = 1
+ * programa desta POC.
  */
 public final class AstDump {
 
@@ -51,7 +59,7 @@ public final class AstDump {
         try {
             Program program = new CobolParserRunnerImpl()
                 .analyzeFile(cobolFile, CobolSourceFormatEnum.FIXED);
-            CompilationUnit compilationUnit = program.getCompilationUnit(programId);
+            CompilationUnit compilationUnit = program.getCompilationUnit();
             ProgramUnit programUnit = compilationUnit.getProgramUnit();
             DataDivision dataDivision = programUnit.getDataDivision();
 

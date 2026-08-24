@@ -40,6 +40,12 @@ jobs:
           java-version: "17"
           cache: maven
 
+      # proleap-cobol-parser nao e publicado no Maven Central em nenhuma
+      # versao - precisa ser compilado da fonte antes do pytest/mvn
+      # conseguirem resolve-lo. Ver scripts/install_proleap.sh.
+      - name: Instalar proleap-cobol-parser (nao esta no Maven Central)
+        run: bash scripts/install_proleap.sh
+
       - name: Testes (pytest)
         run: pytest -q
 

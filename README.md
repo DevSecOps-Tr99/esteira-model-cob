@@ -20,6 +20,9 @@ python -m esteira_model_cob simulate jcl/poc001_sucesso.jcl
 # gera o JCL Pipeline Report em reports/
 python -m esteira_model_cob report jcl/poc001_sucesso.jcl
 
+# proleap-cobol-parser nao esta no Maven Central - compila da fonte uma vez
+bash scripts/install_proleap.sh
+
 # gera o AST de um COBOL de exemplo via ProLeap (precisa de java + mvn no PATH)
 python -m esteira_model_cob cobol-ast cobol/payroll_sample.cbl
 ```
