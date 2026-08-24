@@ -1,0 +1,14 @@
+# Padroes de dataset usados pela regra JCL002 (naming_convention).
+#
+# Padrao esperado: ESTM.<APP>.<ENV>.<RESOURCE>
+# "ESTM" e o qualifier de alto nivel reservado para a esteira-model-cob.
+
+naming:
+  pattern: "^ESTM\\.[A-Z0-9]+\\.[A-Z0-9]+\\.[A-Z0-9]+$"
+  example: "ESTM.POC.TU.TESTDATA"
+
+allowed_qualifiers:
+  - ESTM
+
+forbidden_qualifiers:
+  - PROD

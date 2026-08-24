@@ -1,0 +1,7 @@
+//SAMPLE   PROC
+//* PROC de exemplo referenciada pelo dependency check da esteira.
+//* Representa uma procedure catalogada tipica de compilacao/link,
+//* sem logica real - so existe para provar a resolucao de
+//* dependencias entre JCL e PROC no motor Python.
+//STEP01   EXEC PGM=IEFBR14
+//         PEND
