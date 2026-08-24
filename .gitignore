@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+build/
+dist/
+
+# Reports gerados pela esteira (evidencia local, nao versionada)
+reports/*
+!reports/.gitkeep
+
+# Java / Maven (tools/proleap-runner)
+tools/proleap-runner/target/
+*.class
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
