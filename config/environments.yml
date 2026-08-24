@@ -1,0 +1,24 @@
+# Parametros por ambiente - mapeados 1:1 para GitHub Environments
+# (environment: TU / TI / PRD nos workflows).
+
+environments:
+  TU:
+    github_environment: TU
+    class: A
+    msgclass: X
+    requires_approval: false
+
+  TI:
+    github_environment: TI
+    class: A
+    msgclass: X
+    requires_approval: true
+    required_reviewers: 1
+
+  PRD:
+    github_environment: PRD
+    class: A
+    msgclass: X
+    requires_approval: true
+    required_reviewers: 2
+    require_change_approved: true

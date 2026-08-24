@@ -1,0 +1,148 @@
+"""CLI da esteira-model-cob: python -m esteira_model_cob <comando> ...
+
+Comandos espelham o desenho original (python main.py validate/simulate/...):
+GitHub Actions e uma camada fina que so chama esses comandos - a logica
+inteira vive aqui, nao no YAML do workflow.
+"""
+
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+
+from . import __version__
+from .adapters.mock_zos import MockZosAdapter
+from .cobol_ast.proleap_client import ProLeapUnavailableError, dump_ast
+from .dependencies import resolve_dependencies
+from .parser import parse_jcl_file
+from .quality_gate import compute_score
+from .report import render_report, write_report
+from .rules_engine import evaluate, load_dataset_naming_pattern, load_rules
+from .security import evaluate_security
+from .simulator import simulate
+
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+_RULES_PATH = _REPO_ROOT / "config" / "rules.yml"
+_DATASETS_PATH = _REPO_ROOT / "config" / "datasets.yml"
+_PROC_DIR = _REPO_ROOT / "proc"
+
+
+def _iter_jcl_files(target: Path) -> list[Path]:
+    if target.is_file():
+        return [target]
+    return sorted(target.glob("*.jcl"))
+
+
+def _run_gates(jcl_path: Path):
+    job = parse_jcl_file(jcl_path)
+    rules = load_rules(_RULES_PATH)
+    naming_pattern = load_dataset_naming_pattern(_DATASETS_PATH)
+
+    findings = evaluate(job, rules, naming_pattern)
+    quality = compute_score(findings)
+    security = evaluate_security(findings)
+    deps = resolve_dependencies(job, _PROC_DIR)
+
+    return job, quality, security, deps
+
+
+def cmd_validate(args: argparse.Namespace) -> int:
+    target = Path(args.path)
+    exit_code = 0
+
+    for jcl_path in _iter_jcl_files(target):
+        job, quality, security, deps = _run_gates(jcl_path)
+
+        print(f"\n{jcl_path.name}")
+        print(f"  Job .............. {job.job_name}")
+        print(f"  Quality Gate ..... {quality.status} ({quality.score}/100)")
+        for finding in quality.findings:
+            print(f"    [{finding.severity.upper():<8}] {finding.rule_id} {finding.name}: {finding.message}")
+        print(f"  Security Gate .... {security.status}")
+        if deps.missing:
+            print(f"  Dependencias ..... FALTANDO: {', '.join(deps.missing)}")
+
+        if quality.status == "FAILED":
+            exit_code = 1
+
+    return exit_code
+
+
+def cmd_simulate(args: argparse.Namespace) -> int:
+    target = Path(args.path)
+    adapter = MockZosAdapter()
+    exit_code = 0
+
+    for jcl_path in _iter_jcl_files(target):
+        job, quality, security, _deps = _run_gates(jcl_path)
+        result = simulate(job, quality, adapter)
+
+        print(f"\n{jcl_path.name}")
+        if result.executed and result.job_result:
+            print(f"  JOBID ............ {result.job_result.jobid}")
+            print(f"  RC ............... {result.job_result.rc}")
+        else:
+            print(f"  BLOQUEADO: {result.reason}")
+            exit_code = 1
+
+    return exit_code
+
+
+def cmd_report(args: argparse.Namespace) -> int:
+    target = Path(args.path)
+    adapter = MockZosAdapter()
+
+    for jcl_path in _iter_jcl_files(target):
+        job, quality, security, _deps = _run_gates(jcl_path)
+        simulation = simulate(job, quality, adapter)
+        report_text = render_report(job, quality, security, simulation)
+        out_file = write_report(report_text, job.job_name)
+        print(f"Relatorio gerado: {out_file}")
+
+    return 0
+
+
+def cmd_cobol_ast(args: argparse.Namespace) -> int:
+    try:
+        result = dump_ast(args.path)
+    except ProLeapUnavailableError as exc:
+        print(f"AVISO: {exc}", file=sys.stderr)
+        return 0
+    print(result)
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="esteira-model-cob")
+    parser.add_argument("--version", action="version", version=__version__)
+
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    p_validate = subparsers.add_parser("validate", help="Roda o Rules Engine e o Quality Gate")
+    p_validate.add_argument("path", help="Arquivo .jcl ou pasta com JCLs")
+    p_validate.set_defaults(func=cmd_validate)
+
+    p_simulate = subparsers.add_parser("simulate", help="Simula a submissao no MockZosAdapter")
+    p_simulate.add_argument("path", help="Arquivo .jcl ou pasta com JCLs")
+    p_simulate.set_defaults(func=cmd_simulate)
+
+    p_report = subparsers.add_parser("report", help="Gera o JCL Pipeline Report em reports/")
+    p_report.add_argument("path", help="Arquivo .jcl ou pasta com JCLs")
+    p_report.set_defaults(func=cmd_report)
+
+    p_cobol_ast = subparsers.add_parser("cobol-ast", help="Gera o AST de um COBOL via ProLeap")
+    p_cobol_ast.add_argument("path", help="Arquivo .cbl")
+    p_cobol_ast.set_defaults(func=cmd_cobol_ast)
+
+    return parser
+
+
+def main(argv: list[str] | None = None) -> None:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    sys.exit(args.func(args))
+
+
+if __name__ == "__main__":
+    main()

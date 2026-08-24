@@ -1,0 +1,47 @@
+# Rules Engine - esteira-model-cob
+#
+# Regras versionadas em YAML, nao hardcoded em Python. Cada regra tem:
+#   id        - identificador estavel (referenciado em relatorios/testes)
+#   name      - nome curto da regra
+#   severity  - critical | high | medium | low
+#   kind      - "structural" (avaliada sobre o JclJob parseado) ou
+#               "pattern" (regex sobre o texto bruto do JCL)
+#   pattern   - regex usada quando kind == pattern
+#   message   - mensagem exibida quando a regra e violada
+
+rules:
+  - id: JCL001
+    name: job_required
+    kind: structural
+    check: job_name_present
+    severity: critical
+    message: "JOB statement sem nome de job valido."
+
+  - id: JCL002
+    name: naming_convention
+    kind: structural
+    check: dataset_naming
+    severity: medium
+    message: "Dataset fora do padrao ESTM.<APP>.<ENV>.<RESOURCE>."
+
+  - id: JCL003
+    name: prod_dataset_delete
+    kind: pattern
+    pattern: "DELETE\\s+PROD\\."
+    severity: critical
+    message: "Exclusao de dataset em qualifier de producao (PROD.*) e proibida."
+
+  - id: JCL004
+    name: forbidden_program
+    kind: structural
+    check: program_allowed
+    severity: high
+    message: "PGM= referencia um programa fora da lista permitida para a esteira."
+
+  - id: JCL005
+    name: missing_msgclass
+    kind: pattern
+    pattern: "MSGCLASS="
+    severity: low
+    invert: true
+    message: "JOB statement sem MSGCLASS definido."
