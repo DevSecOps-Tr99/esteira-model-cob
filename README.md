@@ -57,3 +57,5 @@ O teste `tests/test_proleap_client.py` é pulado automaticamente se `java`/`mvn`
 - [`docs/ambiente-validacao.md`](docs/ambiente-validacao.md) — VM de validação para rodar a esteira completa (incl. ProLeap) fora do GitHub Actions
 - [`docs/poc-demo.md`](docs/poc-demo.md) — roteiro de demonstração ponta a ponta
 - [`docs/kickoff-perguntas.md`](docs/kickoff-perguntas.md) — perguntas em aberto e matriz de funções
+- [`docs/validacao-tecnica.md`](docs/validacao-tecnica.md) — perguntas para validar as escolhas técnicas contra o ambiente real
+- [`docs/pre-requisitos-ambiente-real.md`](docs/pre-requisitos-ambiente-real.md) — o que precisa ser provisionado para portar a POC para o ambiente do banco
