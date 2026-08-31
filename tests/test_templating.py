@@ -1,0 +1,45 @@
+from pathlib import Path
+
+import pytest
+
+from esteira_model_cob.templating import load_env_params, params_for, render
+
+_ROOT = Path(__file__).resolve().parents[1]
+_ENV_PARAMS_PATH = _ROOT / "config" / "jcl_env_params.yml"
+_POC005 = _ROOT / "jcl" / "poc005_por_ambiente.jcl"
+
+
+def test_render_substitutes_placeholders():
+    assert render("SPACE=(TRK,(${A},${B}),RLSE)", {"A": "5", "B": "1"}) == "SPACE=(TRK,(5,1),RLSE)"
+
+
+def test_render_raises_on_missing_param():
+    with pytest.raises(KeyError):
+        render("SPACE=(TRK,(${A},${B}),RLSE)", {"A": "5"})
+
+
+def test_params_for_returns_empty_dict_when_job_or_env_unknown():
+    config = {"POC005": {"TU": {"SPACE_PRIMARY": "5"}}}
+    assert params_for(config, "POC005", "PRD") == {}
+    assert params_for(config, "OUTRO_JOB", "TU") == {}
+    assert params_for(config, None, "TU") == {}
+
+
+def test_poc005_renders_smaller_space_in_tu_and_ti_bigger_in_prd():
+    """Espelha o padrao encontrado em JCL real cedido pelo banco (jcl/real/,
+    nao versionado): mesmo job/dataset/logica, so o SPACE alocado muda -
+    TU e TI identicos, PRD maior."""
+    config = load_env_params(_ENV_PARAMS_PATH)
+    template_text = _POC005.read_text(encoding="utf-8")
+
+    rendered = {
+        env: render(template_text, params_for(config, "POC005", env))
+        for env in ("TU", "TI", "PRD")
+    }
+
+    space_line = {env: next(line for line in text.splitlines() if "SPACE=" in line) for env, text in rendered.items()}
+
+    assert space_line["TU"] == space_line["TI"]
+    assert space_line["PRD"] != space_line["TU"]
+    assert "(5,1)" in space_line["TU"]
+    assert "(50,10)" in space_line["PRD"]

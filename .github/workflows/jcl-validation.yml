@@ -63,6 +63,15 @@ jobs:
         continue-on-error: true
         run: python -m esteira_model_cob validate jcl/
 
+      # poc005 tem um placeholder ${SPACE_PRIMARY}/${SPACE_SECONDARY} -
+      # esteira_model_cob/templating.py + config/jcl_env_params.yml
+      # renderizam um valor por ambiente (achado testando contra JCL real -
+      # ver docs/jcl-parametros-por-ambiente.md). O passo acima ja validou
+      # com --env default (TU); este mostra o mesmo job renderizado para PRD.
+      - name: Validar JCL com parametro por ambiente (--env PRD)
+        continue-on-error: true
+        run: python -m esteira_model_cob validate jcl/poc005_por_ambiente.jcl --env PRD
+
       - name: Simular submissao (MockZosAdapter)
         continue-on-error: true
         run: python -m esteira_model_cob simulate jcl/
@@ -134,6 +143,15 @@ jobs:
       - name: Validar JCLs (Rules Engine + Quality Gate)
         continue-on-error: true
         run: python -m esteira_model_cob validate jcl/
+
+      # poc005 tem um placeholder ${SPACE_PRIMARY}/${SPACE_SECONDARY} -
+      # esteira_model_cob/templating.py + config/jcl_env_params.yml
+      # renderizam um valor por ambiente (achado testando contra JCL real -
+      # ver docs/jcl-parametros-por-ambiente.md). O passo acima ja validou
+      # com --env default (TU); este mostra o mesmo job renderizado para PRD.
+      - name: Validar JCL com parametro por ambiente (--env PRD)
+        continue-on-error: true
+        run: python -m esteira_model_cob validate jcl/poc005_por_ambiente.jcl --env PRD
 
       - name: Simular submissao (MockZosAdapter)
         continue-on-error: true

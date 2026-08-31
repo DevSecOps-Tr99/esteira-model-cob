@@ -8,6 +8,7 @@ não apenas o executa.
 | `jcl/poc001_sucesso.jcl` | `IEFBR14` criando dataset dentro do padrão `ESTM.<APP>.<ENV>.<RESOURCE>` | Quality Gate PASS 100/100, Security Gate PASSED, RC 0000 |
 | `jcl/poc002_warning.jcl` | Dataset fora do padrão (`POC.TEST.DATA`) | Quality Gate WARNING (90/100), pipeline segue |
 | `jcl/poc003_bloqueado.jcl` | `IDCAMS DELETE PROD.*` | Security Gate FAILED, regra crítica `JCL003` (`prod_dataset_delete`), deploy bloqueado antes do adapter |
+| `jcl/poc005_por_ambiente.jcl` | Mesmo job/dataset em TU/TI/PRD, só o `SPACE=` varia por ambiente (`--env`) — ver `docs/jcl-parametros-por-ambiente.md` | Quality Gate PASS 100/100 nos 3 ambientes; `SPACE=` renderizado diferente em PRD |
 
 ## Passo a passo
 
@@ -26,7 +27,26 @@ python -m esteira_model_cob report jcl/poc002_warning.jcl
 python -m esteira_model_cob report jcl/poc003_bloqueado.jcl
 ```
 
-## 4º cenário: guarda de binário (achado da esteira Endevor real)
+## 4º cenário: mesmo JCL, parâmetro diferente por ambiente
+
+`poc005_por_ambiente.jcl` tem um placeholder `${SPACE_PRIMARY}`/`${SPACE_SECONDARY}`
+no `SPACE=` do `SORTOUT` — sem `--env`, ou com um job sem entrada em
+`config/jcl_env_params.yml`, nada muda. Com `--env`, o valor renderizado
+muda:
+
+```bash
+python -m esteira_model_cob validate jcl/poc005_por_ambiente.jcl --env TU   # SPACE=(TRK,(5,1),RLSE)
+python -m esteira_model_cob validate jcl/poc005_por_ambiente.jcl --env PRD  # SPACE=(TRK,(50,10),RLSE)
+```
+
+Isso reproduz um padrão real encontrado testando o parser contra JCL
+cedido pelo banco (`jcl/real/`, não versionado): TU e TI idênticos, PRD
+alocando mais espaço — hoje mantido lá como 3 cópias inteiras do arquivo.
+Ver `docs/jcl-parametros-por-ambiente.md` para a explicação completa
+(inclusive por que isso é conceitualmente o mesmo problema que
+`appsettings.{Environment}.json` no .NET resolve).
+
+## 5º cenário: guarda de binário (achado da esteira Endevor real)
 
 Diferente dos 3 JCLs acima (texto ASCII versionado normalmente), este
 cenário prova a mitigação para o ponto de atenção trazido pela Ana

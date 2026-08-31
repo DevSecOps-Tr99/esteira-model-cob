@@ -58,6 +58,12 @@ pytest -q
 python -m esteira_model_cob validate jcl/
 python -m esteira_model_cob simulate jcl/
 python -m esteira_model_cob cobol-ast cobol/payroll_sample.cbl
+
+# JCL com parametro por ambiente (docs/jcl-parametros-por-ambiente.md)
+python -m esteira_model_cob validate jcl/poc005_por_ambiente.jcl --env PRD
+
+# guarda de binario (docs/reuniao-endevor-jcl-binarios.md)
+python -m esteira_model_cob binary-guard tests/fixtures/
 ```
 
 Para registrar como self-hosted runner, seguir o fluxo padrão do GitHub em

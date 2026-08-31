@@ -1,0 +1,22 @@
+# Parametros de JCL que variam por ambiente - mesmo template
+# (jcl/*.jcl com placeholders ${VAR}), valores diferentes por TU/TI/PRD.
+#
+# Equivalente ao appsettings.{Environment}.json do .NET ou a um
+# values-<env>.yaml do Helm, aplicado a JCL - ver
+# esteira_model_cob/templating.py e docs/reuniao-endevor-jcl-binarios.md
+# (achado testando contra JCL real cedido pelo banco).
+#
+# So precisa de uma entrada aqui um job que de fato usa placeholder ${VAR}
+# no .jcl. Um job sem entrada aqui roda sem nenhuma substituicao (mesmo
+# comportamento de antes deste mecanismo existir).
+
+POC005:
+  TU:
+    SPACE_PRIMARY: "5"
+    SPACE_SECONDARY: "1"
+  TI:
+    SPACE_PRIMARY: "5"
+    SPACE_SECONDARY: "1"
+  PRD:
+    SPACE_PRIMARY: "50"
+    SPACE_SECONDARY: "10"

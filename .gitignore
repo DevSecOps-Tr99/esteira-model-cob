@@ -15,6 +15,12 @@ dist/
 reports/*
 !reports/.gitkeep
 
+# JCL reais cedidos pelo banco para analise (nomes reais de job/dataset/
+# conta - nao sanitizados, nao devem ir pro repositorio). Ver
+# docs/jcl-parametros-por-ambiente.md para o que foi extraido deles de
+# forma generica/anonimizada.
+jcl/real/
+
 # Java / Maven (tools/proleap-runner)
 tools/proleap-runner/target/
 *.class

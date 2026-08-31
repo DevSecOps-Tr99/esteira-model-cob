@@ -43,6 +43,11 @@ PAGES = [
         "reuniao-endevor-jcl-binarios.html",
         "Reuniao Endevor - binarios",
     ),
+    (
+        "docs/jcl-parametros-por-ambiente.md",
+        "jcl-parametros-por-ambiente.html",
+        "JCL - parametros por ambiente",
+    ),
 ]
 
 CSS = """
