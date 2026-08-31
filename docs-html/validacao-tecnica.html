@@ -41,7 +41,7 @@ blockquote { border-left: 3px solid var(--accent); margin: 0; padding: 4px 16px;
 </style>
 </head>
 <body>
-<nav><h1>esteira-model-cob</h1><a href="index.html" class="">esteira-model-cob</a><a href="como-rodar-manualmente.html" class="">Como rodar manualmente</a><a href="arquitetura.html" class="">Arquitetura</a><a href="gates.html" class="">Os 3 gates</a><a href="seguranca.html" class="">Seguranca</a><a href="integracao-zos.html" class="">Integracao z/OS</a><a href="gitflow.html" class="">Gitflow</a><a href="ambiente-validacao.html" class="">Ambiente de validacao (VM)</a><a href="poc-demo.html" class="">Roteiro de demo</a><a href="kickoff-perguntas.html" class="">Perguntas de kickoff</a><a href="validacao-tecnica.html" class="active">Validacao tecnica</a><a href="pre-requisitos-ambiente-real.html" class="">Pre-requisitos ambiente real</a></nav>
+<nav><h1>esteira-model-cob</h1><a href="index.html" class="">esteira-model-cob</a><a href="como-rodar-manualmente.html" class="">Como rodar manualmente</a><a href="arquitetura.html" class="">Arquitetura</a><a href="gates.html" class="">Os 3 gates</a><a href="seguranca.html" class="">Seguranca</a><a href="integracao-zos.html" class="">Integracao z/OS</a><a href="gitflow.html" class="">Gitflow</a><a href="ambiente-validacao.html" class="">Ambiente de validacao (VM)</a><a href="poc-demo.html" class="">Roteiro de demo</a><a href="kickoff-perguntas.html" class="">Perguntas de kickoff</a><a href="validacao-tecnica.html" class="active">Validacao tecnica</a><a href="pre-requisitos-ambiente-real.html" class="">Pre-requisitos ambiente real</a><a href="reuniao-endevor-jcl-binarios.html" class="">Reuniao Endevor - binarios</a></nav>
 <main>
 <h1 id="validacao-tecnica-e-alinhamento-com-o-ambiente-real">Validação técnica e alinhamento com o ambiente real</h1>
 <p>Este documento é complementar ao <code>kickoff-perguntas.md</code> (que cobre a
@@ -121,7 +121,21 @@ corrigidas antes de qualquer coisa ir para produção.</p>
 <li>Versão de Python homologada pelo banco?</li>
 <li>PyPI liberado, ou precisa de mirror interno (Artifactory/Nexus)?</li>
 </ul>
-<p>Ver também <a href="pre-requisitos-ambiente-real.md"><code>pre-requisitos-ambiente-real.md</code></a>
+<h2 id="9-componentes-hexadecimaisbinarios">9. Componentes hexadecimais/binários</h2>
+<ul>
+<li>O <code>MockZosAdapter</code>/<code>ZosmfAdapter</code> (Fase 2) cobre só a submissão do job.
+  Falta desenhar quem grava o fonte (JCL/COPY/PROC) na biblioteca-alvo — e
+  isso precisa suportar modo binário para componentes com caracteres
+  hexadecimais não roundtrippable, sob pena de corrupção irreversível.
+  <strong>Fechado:</strong> via z/OSMF Files REST API / Zowe (não Wazi Deploy), e o
+  tratamento binário é definitivo, não contingência temporária. Ver
+  <a href="reuniao-endevor-jcl-binarios.html"><code>reuniao-endevor-jcl-binarios.md</code></a>, seção 5.</li>
+<li>Nenhum componente do nosso escopo real foi verificado ainda quanto a
+  esse tipo de caractere — em vez de esperar um caso real, o plano é criar
+  massa de teste sintética com esses bytes embutidos para validar o guard
+  de binário ponta a ponta.</li>
+</ul>
+<p>Ver também <a href="pre-requisitos-ambiente-real.html"><code>pre-requisitos-ambiente-real.md</code></a>
 para a lista do que precisa ser provisionado para responder e aplicar
 essas respostas.</p>
 </main>

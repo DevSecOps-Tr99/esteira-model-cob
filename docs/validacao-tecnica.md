@@ -78,6 +78,20 @@ corrigidas antes de qualquer coisa ir para produção.
 - Versão de Python homologada pelo banco?
 - PyPI liberado, ou precisa de mirror interno (Artifactory/Nexus)?
 
+## 9. Componentes hexadecimais/binários
+
+- O `MockZosAdapter`/`ZosmfAdapter` (Fase 2) cobre só a submissão do job.
+  Falta desenhar quem grava o fonte (JCL/COPY/PROC) na biblioteca-alvo — e
+  isso precisa suportar modo binário para componentes com caracteres
+  hexadecimais não roundtrippable, sob pena de corrupção irreversível.
+  **Fechado:** via z/OSMF Files REST API / Zowe (não Wazi Deploy), e o
+  tratamento binário é definitivo, não contingência temporária. Ver
+  [`reuniao-endevor-jcl-binarios.md`](reuniao-endevor-jcl-binarios.md), seção 5.
+- Nenhum componente do nosso escopo real foi verificado ainda quanto a
+  esse tipo de caractere — em vez de esperar um caso real, o plano é criar
+  massa de teste sintética com esses bytes embutidos para validar o guard
+  de binário ponta a ponta.
+
 Ver também [`pre-requisitos-ambiente-real.md`](pre-requisitos-ambiente-real.md)
 para a lista do que precisa ser provisionado para responder e aplicar
 essas respostas.

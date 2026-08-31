@@ -59,3 +59,4 @@ O teste `tests/test_proleap_client.py` é pulado automaticamente se `java`/`mvn`
 - [`docs/kickoff-perguntas.md`](docs/kickoff-perguntas.md) — perguntas em aberto e matriz de funções
 - [`docs/validacao-tecnica.md`](docs/validacao-tecnica.md) — perguntas para validar as escolhas técnicas contra o ambiente real
 - [`docs/pre-requisitos-ambiente-real.md`](docs/pre-requisitos-ambiente-real.md) — o que precisa ser provisionado para portar a POC para o ambiente do banco
+- [`docs/reuniao-endevor-jcl-binarios.md`](docs/reuniao-endevor-jcl-binarios.md) — paralelo com a esteira Endevor real e o risco de componentes hexadecimais/binários (reunião com a Ana)

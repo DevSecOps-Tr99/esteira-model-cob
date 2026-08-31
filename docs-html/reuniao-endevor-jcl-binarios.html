@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<title>Reuniao Endevor - binarios - esteira-model-cob</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+  --bg: #ffffff; --fg: #1a1a1a; --muted: #5b6270; --border: #e2e5eb;
+  --code-bg: #f4f5f7; --accent: #2f5fd6; --nav-bg: #f7f8fa;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #14161a; --fg: #e7e9ec; --muted: #9aa1ad; --border: #2b2f37;
+    --code-bg: #1d2026; --accent: #7fa4ff; --nav-bg: #1a1d23; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+  font-family: -apple-system, Segoe UI, Helvetica, Arial, sans-serif;
+  display: flex; min-height: 100vh; }
+nav { width: 260px; flex-shrink: 0; background: var(--nav-bg); border-right: 1px solid var(--border);
+  padding: 24px 16px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+nav h1 { font-size: 15px; margin: 0 0 16px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+nav a { display: block; padding: 6px 8px; border-radius: 6px; color: var(--fg); text-decoration: none; font-size: 14px; }
+nav a:hover { background: var(--code-bg); }
+nav a.active { background: var(--accent); color: #fff; }
+main { flex: 1; max-width: 860px; margin: 0 auto; padding: 40px 32px 80px; overflow-x: auto; }
+h1, h2, h3 { line-height: 1.3; }
+h1 { font-size: 28px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+h2 { font-size: 21px; margin-top: 40px; }
+h3 { font-size: 17px; }
+p, li { line-height: 1.6; }
+a { color: var(--accent); }
+code { background: var(--code-bg); padding: 2px 5px; border-radius: 4px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+pre code { background: none; padding: 0; }
+table { border-collapse: collapse; width: 100%; margin: 16px 0; overflow-x: auto; display: block; }
+th, td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; font-size: 14px; }
+th { background: var(--code-bg); }
+blockquote { border-left: 3px solid var(--accent); margin: 0; padding: 4px 16px; color: var(--muted); }
+.mermaid-note { color: var(--muted); font-size: 13px; font-style: italic; }
+</style>
+</head>
+<body>
+<nav><h1>esteira-model-cob</h1><a href="index.html" class="">esteira-model-cob</a><a href="como-rodar-manualmente.html" class="">Como rodar manualmente</a><a href="arquitetura.html" class="">Arquitetura</a><a href="gates.html" class="">Os 3 gates</a><a href="seguranca.html" class="">Seguranca</a><a href="integracao-zos.html" class="">Integracao z/OS</a><a href="gitflow.html" class="">Gitflow</a><a href="ambiente-validacao.html" class="">Ambiente de validacao (VM)</a><a href="poc-demo.html" class="">Roteiro de demo</a><a href="kickoff-perguntas.html" class="">Perguntas de kickoff</a><a href="validacao-tecnica.html" class="">Validacao tecnica</a><a href="pre-requisitos-ambiente-real.html" class="">Pre-requisitos ambiente real</a><a href="reuniao-endevor-jcl-binarios.html" class="active">Reuniao Endevor - binarios</a></nav>
+<main>
+<h1 id="alinhamento-com-a-esteira-endevor-real-e-o-risco-dos-binarioshexadecimais">Alinhamento com a esteira Endevor real e o risco dos binários/hexadecimais</h1>
+<p>Registro da reunião <strong>"Reunião alinhamento JCL banco"</strong> de 31/08/2026
+(Ana Exemplo, Bruno Exemplo, Carlos Exemplo) —
+primeiro contato com quem já opera uma esteira real de migração do Endevor no
+banco. Objetivo deste documento: 1) traçar o paralelo entre o que a Ana
+descreveu e o que <code>esteira-model-cob</code> propõe hoje, e 2) registrar o ponto de
+atenção mais importante que ela levantou — <strong>componentes com caracteres
+hexadecimais não roundtrippable, que só podem trafegar como binário</strong> — e o
+plano de ação para tratar isso aqui.</p>
+<h2 id="1-o-paralelo-a-esteira-que-a-ana-ja-opera">1. O paralelo: a esteira que a Ana já opera</h2>
+<p>O time dela migra uma esteira Endevor (escopo maior que o nosso: COBOL,
+Assembler, mapas BMS, Control-M e JCL) para um pipeline com ferramental
+oficial da IBM. Fluxo descrito na reunião:</p>
+<pre><code>Analista altera componente (baixa do Git para o mainframe)
+        ↓
+Z Builder                  ← &quot;nasce&quot; aqui; builda o componente e marca o deployType
+        ↓
+DBB (Dependency Based Build) ← empacota os artefatos gerados
+        ↓
+JFrog Artifactory           ← repositório dos pacotes
+        ↓
+Wazi Deploy (&quot;AZ/OZ Deploy&quot;)← consulta o deployType, decide biblioteca-alvo por
+                               ambiente, executa jobs de validação antes/depois
+        ↓
+Biblioteca-alvo no mainframe (ex.: HBBR.PR1.DECKLIB para JCL, .PROCLIB, .PARMLIB…)
+</code></pre>
+<p>A configuração real que ela mostrou (<code>reusable-configurations/mainframe/instances/cwb/dbb/</code>)
+tem um <code>Transfer.yaml</code> por tipo de componente (<code>copyJCL</code> → <code>copyMode: TEXT</code>,
+<code>deployType: JCL</code>; <code>copyZCFG</code> → <code>deployType: CONFIG</code>; etc.) e um <code>info.toml</code>
+que mapeia <code>deployType</code> → dataset-alvo por ambiente
+(<code>[cwbp.deploy.lib.jcl] target = "HBBR.PR1.DECKLIB"</code>, <code>lib.dbrmb</code>/<code>lib.dbrmo</code>
+já vêm com <code>spec = "binary"</code>, <code>lib.debugb/o</code> com <code>spec = "debug"</code>). Conexão
+com o mainframe: <strong>Zowe</strong> ("Ozzy"/RC API), que ela descreveu como a porta de
+entrada — não necessariamente amarrada ao DBB/Wazi Deploy.</p>
+<h3 id="mapeamento-contra-esteira-model-cob">Mapeamento contra <code>esteira-model-cob</code></h3>
+<table>
+<thead>
+<tr>
+<th>Etapa (esteira da Ana)</th>
+<th>Ferramenta dela</th>
+<th>Equivalente hoje em <code>esteira-model-cob</code></th>
+<th>Situação</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Marcar tipo de artefato p/ deploy (<code>deployType</code>)</td>
+<td>Z Builder</td>
+<td>—</td>
+<td><strong>Não existe.</strong> <code>parser.py</code> extrai JOB/EXEC/DD, mas não classifica o componente para deploy.</td>
+</tr>
+<tr>
+<td>Empacotar artefatos</td>
+<td>DBB</td>
+<td>—</td>
+<td><strong>Não existe</strong> (Fase 1 não empacota nada; só valida e simula).</td>
+</tr>
+<tr>
+<td>Repositório de artefatos</td>
+<td>JFrog Artifactory</td>
+<td>GitHub Artifacts/Releases (citado em <code>arquitetura.md</code>, não implementado)</td>
+<td>Equivalente já mapeado, falta implementar.</td>
+</tr>
+<tr>
+<td>Gravar o fonte na biblioteca-alvo do mainframe</td>
+<td>Wazi Deploy (<code>deployType</code> → dataset)</td>
+<td>—</td>
+<td><strong>Gap real</strong> — ver seção 3.</td>
+</tr>
+<tr>
+<td>Submeter/acompanhar execução do job</td>
+<td>(fora do escopo dela nesta conversa)</td>
+<td><code>ExecutionAdapter</code> / <code>ZosmfAdapter</code> (Fase 2, <code>docs/integracao-zos.md</code>)</td>
+<td>Já desenhado — mas cobre só a <strong>execução</strong>, não a gravação do fonte.</td>
+</tr>
+<tr>
+<td>Conectividade com o mainframe</td>
+<td>Zowe (RSE API / z/OSMF)</td>
+<td>Zowe CLI / Zowe Client Python SDK / z/OSMF (já em <code>integracao-zos.md</code>)</td>
+<td>Alinhado — ela confirma que Zowe é o caminho recomendado, <strong>independente</strong> de usar DBB/Wazi Deploy.</td>
+</tr>
+<tr>
+<td>Control-M</td>
+<td>Também tratado como binário (mesmos caracteres especiais)</td>
+<td>"Permanece inalterado" (<code>arquitetura.md</code>)</td>
+<td>Falta cobrir o transporte binário desses componentes — ver seção 3.</td>
+</tr>
+</tbody>
+</table>
+<p>Ponto que ela deixou explícito duas vezes: <strong>não precisamos usar o mesmo
+ferramental</strong> (DBB/Wazi Deploy). Como nosso escopo é só JCL (o dela cobre
+COBOL, Assembler e mapas também), ela sugeriu que possamos simplificar —
+por exemplo, ir direto com Python + Zowe/z/OSMF para o teste de conectividade,
+sem precisar do DBB.</p>
+<blockquote>
+<p><strong>Decisão fechada em 31/08/2026:</strong> <code>esteira-model-cob</code> segue com
+<strong>Zowe/z/OSMF + Python direto</strong>, sem DBB/Wazi Deploy. Repositório de
+artefatos: <strong>GitHub Artifacts/Releases</strong> (a princípio, não JFrog
+Artifactory). Ver seção 5.</p>
+</blockquote>
+<h2 id="2-o-ponto-de-atencao-hexadecimais-hard-coded-e-caracteres-nao-roundtrippable">2. O ponto de atenção: hexadecimais "hard-coded" e caracteres não roundtrippable</h2>
+<p>Achado dela na migração do Endevor (instância CWB): existem componentes —
+<strong>JCL, copybooks (COPY) e PROC</strong> — em que alguém, no terminal 3270/ISPF,
+ligou o modo hex do editor (<code>HEX ON</code>) e digitou um valor hexadecimal
+diretamente dentro do componente, no lugar de, por exemplo, escrever
+<code>VALUE X'...'</code> em COBOL. O resultado visual no editor é um espaço em branco,
+mas o byte gravado ali não tem correspondência em ASCII/UTF-8.</p>
+<p>Consequência prática, nas palavras dela: <strong>qualquer transporte desses
+componentes que não seja binário corrompe o conteúdo</strong> — ela testou baixar
+via zFS/USS, via Zowe e via RSE API, e as três formas corromperam o dado.
+Isso vale tanto para os componentes de aplicação (JCL/COPY/PROC) quanto para
+os componentes de Control-M, pelo mesmo motivo.</p>
+<p>Contingência que o time dela adotou (ainda sem solução definitiva — depende
+de uma refatoração futura do código-fonte para eliminar esses hexadecimais
+hard-coded):</p>
+<ol>
+<li>O desenvolvedor altera o componente <strong>diretamente no mainframe</strong>.</li>
+<li>Baixa o componente <strong>como binário</strong> (não como texto).</li>
+<li>Inclui esse binário na branch e trafega normalmente pelo Git.</li>
+<li>No deploy, o binário é <strong>restabelecido para EBCDIC</strong> para o componente
+   voltar a ser executável/legível no mainframe.</li>
+</ol>
+<p>Recomendação dela para não sermos surpreendidos: fazer uma <strong>busca
+hexadecimal</strong> (hex search) nas bibliotecas reais que vão entrar no escopo,
+via ISPF/3270, procurando por esses caracteres antes de migrar qualquer
+componente — foi assim que o time dela encontrou o problema na instância CWB.</p>
+<blockquote>
+<p><strong>Decisão fechada em 31/08/2026:</strong> diferente do time da Ana (que
+trata isso como contingência temporária até uma refatoração futura do
+código-fonte), em <code>esteira-model-cob</code> o tratamento binário é adotado como
+<strong>parte definitiva do desenho</strong> — não como stopgap. O guard de binário, o
+<code>.gitattributes</code> e o caminho de deploy em modo <code>binary</code> (seção 4) não são
+descartados quando/se a refatoração acontecer; continuam sendo a forma
+permanente de tratar qualquer componente hex-declarado que apareça no
+escopo.</p>
+</blockquote>
+<h3 id="a-tabela-de-bytes-desafios-binariostxt">A tabela de bytes (<code>desafios-binarios.txt</code>)</h3>
+<p>O arquivo que ela indicou como referência (<code>desafios-binarios.txt</code>, na raiz
+de <code>C:\Projetos\cliente\</code>) lista os pontos de código problemáticos, em duas
+classes:</p>
+<ul>
+<li><strong>Non-roundtrippable</strong>: <code>0D</code>, <code>0E</code>, <code>0F</code>, <code>15</code>, <code>25</code></li>
+<li><strong>Non-printable</strong>: <code>00</code>–<code>0C</code>, <code>10</code>–<code>14</code>, <code>16</code>–<code>24</code>, <code>26</code>–<code>3F</code></li>
+</ul>
+<p>Isto é essencial a faixa de controle (<code>C0</code>) do code page EBCDIC usado no
+mainframe (tipicamente IBM-037/1047) — bytes que, ao serem tratados como
+texto e convertidos para ASCII/UTF-8 (ou vice-versa), não têm mapeamento
+seguro de ida-e-volta. Qualquer pipeline que abra esses arquivos em modo
+texto (decode/encode, normalização de fim de linha do Git, etc.) já
+corrompe o dado — não é um problema de ferramenta específica, é inerente ao
+byte em si.</p>
+<h2 id="3-gap-identificado-em-esteira-model-cob-hoje">3. Gap identificado em <code>esteira-model-cob</code> hoje</h2>
+<ol>
+<li><strong>Todo o motor lê os componentes como texto.</strong> <code>parser.py</code> e o restante
+   do pipeline assumem <code>.read_text()</code>/UTF-8. Nunca foi desenhado (nem
+   testado) para bytes fora do intervalo seguro de texto.</li>
+<li><strong>Não existe <code>.gitattributes</code>.</strong> Sem ele, o Git pode normalizar fim de
+   linha e tratar como texto qualquer arquivo — risco real de corromper um
+   componente binário assim que ele entrar no repositório.</li>
+<li><strong>Falta uma camada de "gravar o fonte na biblioteca-alvo".</strong> Hoje
+   <code>ExecutionAdapter</code>/<code>ZosmfAdapter</code> (Fase 2, <code>docs/integracao-zos.md</code>) cobre
+   <strong>só a submissão e o acompanhamento do job</strong> (<code>z/OSMF Jobs REST API</code>).
+   Não existe nada equivalente ao papel do Wazi Deploy: decidir a
+   biblioteca-alvo por ambiente e <strong>gravar</strong> o JCL/COPY/PROC lá — inclusive
+   em modo binário quando necessário. São duas responsabilidades distintas
+   até na própria z/OSMF (<code>restjobs/jobs</code> vs. <code>restfiles/ds</code>), e hoje só a
+   primeira está desenhada.</li>
+<li><strong>Não existe detecção de componentes "hex-declarados".</strong> Nenhum gate
+   verifica, byte a byte, se um componente contém os valores listados em
+   <code>desafios-binarios.txt</code> antes de decidir tratá-lo como texto.</li>
+<li><strong>Não existe um equivalente ao <code>deployType</code>/<code>Transfer.yaml</code> dela.</strong> Nosso
+   <code>config/</code> não tem hoje uma classificação de artefato → biblioteca-alvo
+   por ambiente (mesmo que bem mais simples, já que nosso escopo é só JCL).</li>
+</ol>
+<h2 id="4-plano-de-acao">4. Plano de ação</h2>
+<h3 id="curto-prazo-dentro-do-escopo-atual-da-poc-sem-depender-de-acesso-real">Curto prazo — dentro do escopo atual da POC (sem depender de acesso real)</h3>
+<ol>
+<li><strong>Guarda de binário no pipeline.</strong> Novo módulo (<code>binary_guard.py</code> ou
+   verificação em <code>rules_engine.py</code>) que lê cada componente em modo binário
+   e verifica a presença dos bytes de <code>desafios-binarios.txt</code> <strong>antes</strong> de
+   qualquer decodificação para texto. Se detectado, o componente é marcado
+   <code>requires_binary_transfer</code> e vira um finding no Quality Gate (hoje o
+   pipeline nem chegaria a rodar sem quebrar, se um desses componentes
+   entrasse como texto). Tratamento <strong>definitivo</strong> (ver decisão na seção 2),
+   não um workaround a remover depois.</li>
+<li><strong><code>.gitattributes</code>.</strong> Definir JCL/COPY/PROC como texto por padrão, com
+   instrução documentada de como marcar um componente específico como
+   binário (<code>-text -diff</code>) quando o guard do item 1 o sinalizar — até termos
+   automação completa disso.</li>
+<li><strong>Massa de teste com hex embutido.</strong> Como nenhum JCL/PROC real do nosso
+   escopo tem hoje esse tipo de caractere, criar 1–2 fixtures sintéticos em
+   <code>jcl/</code>/<code>proc/</code> com bytes da tabela <code>desafios-binarios.txt</code> embutidos
+   (gerados via script, não digitados à mão — para garantir os bytes
+   exatos), cobrindo o caso <code>non-roundtrippable</code> e o caso <code>non-printable</code>.
+   É o que valida de ponta a ponta o guard do item 1, o <code>.gitattributes</code> do
+   item 2 e o caminho de deploy binário do item 5, sem depender de acesso
+   real ao mainframe.</li>
+<li><strong>Modelar a segunda API do z/OSMF.</strong> Atualizar <code>docs/integracao-zos.md</code>
+   com a distinção Jobs REST API (execução, já documentada) vs. <strong>Files
+   REST API</strong> (<code>PUT /zosmf/restfiles/ds/...</code>, parâmetro de encoding
+   <code>binary</code>) ou <code>zowe zos-files upload file-to-data-set --binary</code> — caminho
+   <strong>confirmado</strong> (seção 1): Zowe/z/OSMF + Python direto, sem DBB/Wazi
+   Deploy.</li>
+<li><strong>Classificação de artefato → biblioteca-alvo.</strong> Adicionar ao <code>config/</code>
+   um equivalente enxuto do <code>deployType</code>/<code>Transfer.yaml</code>/<code>info.toml</code> da
+   Ana (nosso escopo é só JCL, então bem mais simples): mapear
+   ambiente (<code>TU</code>/<code>TI</code>/<code>PRD</code>) → dataset-alvo, e permitir marcar
+   <code>copyMode: binary</code> por componente.</li>
+<li><strong>Repositório de artefatos: GitHub Artifacts/Releases.</strong> Confirmado
+   (seção 1) como caminho inicial, sem JFrog Artifactory — implementar
+   como parte do empacotamento (item ainda em aberto na Fase 1: não existe
+   empacotamento hoje, só validação/simulação).</li>
+<li><strong>Referenciar este documento</strong> a partir de <code>integracao-zos.md</code>,
+   <code>pre-requisitos-ambiente-real.md</code> e <code>validacao-tecnica.md</code> (feito).</li>
+</ol>
+<h3 id="medio-prazo-depende-de-acesso-real-ao-mainframel2">Médio prazo — depende de acesso real ao mainframe/L2</h3>
+<ol>
+<li><strong>Varredura hexadecimal no escopo real.</strong> Pedir/repetir, para os
+   componentes que vão entrar no nosso escopo (JCL, e PROCs referenciadas),
+   a mesma busca hexadecimal que a Ana fez na instância CWB — para não
+   sermos surpreendidos por um componente já hex-declarado. Confirmado:
+   nenhum componente real conhecido tem isso hoje (ver seção 5) — a
+   varredura é preventiva, não corretiva.</li>
+<li><strong>Teste de round-trip binário — em duas etapas, não uma só:</strong></li>
+<li><strong>9a. Contra o "mainframe simulado" da nossa própria VM — não
+     bloqueado, fazer já.</strong> O job <code>publish</code> do workflow (<code>docs/ambiente-validacao.md</code>)
+     já promove artefatos validados para <code>~/publicado/&lt;AMBIENTE&gt;/...</code> na VM
+     self-hosted (equivalente atual a "mover o membro para a PDS do
+     ambiente"). Hoje esse passo é um <code>cp -r</code> simples — não passa pelo
+     codepage EBCDIC, então não reproduz a corrupção que a Ana
+     descreveu, mas serve para provar que <strong>o resto da nossa própria
+     esteira</strong> (git → binary_guard → <code>.gitattributes</code> → Python →
+     publicação) preserva os bytes exatos da massa de teste do item 3, sem
+     nenhuma reconversão UTF-8 acidental no caminho. Isso é validável agora,
+     sem depender de credencial nenhuma do banco.</li>
+<li><strong>9b. Contra um z/OS real (Zowe/z/OSMF Files REST API).</strong> Só essa
+     etapa depende do acesso/credenciais ao mainframe do banco (bloqueado,
+     ver <code>plano-inicial.md</code>) — é a única forma de provar que o
+     <code>PUT /zosmf/restfiles/ds/...</code> em modo <code>binary</code> realmente preserva o
+     byte EBCDIC original num dataset de verdade, o que nenhuma simulação
+     em VM Linux consegue reproduzir.</li>
+<li><strong>Estrutura DBB/Zowe própria, sem depender da L2 corporativa.</strong> Ainda
+    sem acesso ao que Diego/Eduardo/Gustavo têm validado na L2 (ver seção 5).
+    Como a decisão é Zowe/z/OSMF direto (sem DBB), o que falta provisionar
+    é Zowe CLI/SDK na VM de validação já existente
+    (<code>docs/ambiente-validacao.md</code>) — não a estrutura DBB deles. Se a VM
+    atual não tiver recurso/alcance de rede suficiente para o teste de
+    conectividade real, sinalizar para provisionar mais recursos antes de
+    travar nesse ponto.</li>
+</ol>
+<h2 id="5-decisoes-registradas-em-31082026-fechamento-desta-rodada">5. Decisões registradas em 31/08/2026 (fechamento desta rodada)</h2>
+<table>
+<thead>
+<tr>
+<th>Pergunta</th>
+<th>Decisão</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Algum componente real do nosso escopo já tem caracteres hex?</td>
+<td><strong>Não conhecido hoje.</strong> Construir massa de teste sintética para validar o tratamento (item 3) em vez de esperar um caso real aparecer.</td>
+</tr>
+<tr>
+<td>Time corporativo (Diego/Eduardo/Gustavo) compartilha a estrutura DBB/Zowe da L2?</td>
+<td><strong>Sem acesso ainda.</strong> Não bloqueia: como a decisão é Zowe direto (sem DBB), provisionar Zowe CLI/SDK na nossa própria VM de validação; pedir mais recursos de VM se necessário em vez de esperar o acesso corporativo.</td>
+</tr>
+<tr>
+<td>Ferramental de deploy: DBB + Wazi Deploy ou Zowe/z/OSMF + Python direto?</td>
+<td><strong>Zowe/z/OSMF + Python direto</strong>, dado o escopo menor (só JCL).</td>
+</tr>
+<tr>
+<td>Repositório de artefatos: JFrog Artifactory ou GitHub Artifacts/Releases?</td>
+<td><strong>GitHub Artifacts/Releases</strong>, a princípio.</td>
+</tr>
+<tr>
+<td>Tratar o binário como contingência temporária ou definitiva?</td>
+<td><strong>Definitiva</strong> — parte permanente do desenho de <code>esteira-model-cob</code>, não um stopgap para remover após refatoração (diferente da postura do time da Ana para a esteira deles).</td>
+</tr>
+</tbody>
+</table>
+<p>Com essas decisões, a arquitetura de deploy de <code>esteira-model-cob</code> fica
+fechada como: <strong>Python + Zowe/z/OSMF (Jobs REST API para execução, Files
+REST API em modo binário para gravar o fonte na biblioteca-alvo) +
+GitHub Artifacts/Releases como repositório de artefatos</strong>, sem DBB/Wazi
+Deploy/JFrog — não é mais uma decisão de ferramental em aberto.</p>
+<p>Correção importante em relação à versão anterior deste documento: <strong>nem
+tudo depende de acesso real ao mainframe do banco.</strong> Já existe uma
+"publicação simulada" rodando na VM self-hosted (job <code>publish</code>,
+<code>docs/ambiente-validacao.md</code>) — o equivalente atual a mover o membro para a
+PDS do ambiente. Ela permite validar agora (item 9a) que a nossa própria
+esteira preserva bytes binários ponta a ponta, sem esperar credencial
+nenhuma do banco. O que continua genuinamente bloqueado por
+acesso/credenciais é só a prova final contra um z/OS real via Zowe/z/OSMF
+(item 9b) — porque a simulação em VM Linux não passa pelo codepage EBCDIC e
+não reproduz a corrupção que a Ana descreveu.</p>
+<h2 id="6-re-analise-diferencas-da-nossa-poc-em-relacao-a-esteira-real-alem-do-mainframe-simulado-em-vm-linux">6. Re-análise: diferenças da nossa POC em relação à esteira real (além do "mainframe" simulado em VM Linux)</h2>
+<p>Já é sabido e aceito que o nosso "mainframe" hoje é uma simulação: o
+<code>MockZosAdapter</code> gera JOBID/spool/RC em Python, e o job <code>publish</code>
+(<code>docs/ambiente-validacao.md</code>) "publica" o artefato validado com um
+<code>cp -r</code> para uma pasta comum de Linux (<code>~/publicado/&lt;AMBIENTE&gt;/...</code>) — sem
+JES, sem codepage EBCDIC, sem dataset de verdade. Essa é uma diferença já
+conhecida e endereçada no roadmap (Fase 2 = <code>ZosmfAdapter</code> real). A pergunta
+desta rodada foi: <strong>que outras diferenças existem</strong>, além dessa. Revisando a
+reunião inteira (não só o ponto do binário) contra o estado atual do
+código, ficam estas:</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Diferença / gap</th>
+<th>O que a Ana tem</th>
+<th>O que <code>esteira-model-cob</code> tem hoje</th>
+<th>Categoria</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Estágio de build/empacotamento</strong></td>
+<td>Z Builder builda o componente e já marca o <code>deployType</code></td>
+<td>Não existe — Fase 1 só valida (<code>rules_engine.py</code>) e simula (<code>MockZosAdapter</code>); nenhum artefato é empacotado</td>
+<td>Gap real</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Repositório de artefatos</strong></td>
+<td>JFrog Artifactory</td>
+<td>Decidido GitHub Artifacts/Releases, mas <strong>nada é publicado como artifact hoje</strong> — é só um mapeamento no doc</td>
+<td>Gap real (decisão fechada, implementação pendente)</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Gravar o fonte na biblioteca-alvo (deploy)</strong></td>
+<td>Wazi Deploy: consulta <code>deployType</code>, decide dataset por ambiente, grava</td>
+<td>Só existe o desenho da <code>Jobs REST API</code> (execução); a <code>Files REST API</code> (gravação do fonte, modo binário) está documentada agora mas <strong>não implementada</strong></td>
+<td>Gap real — já registrado nas seções 3–4</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Classificação artefato → biblioteca-alvo por ambiente</strong></td>
+<td><code>Transfer.yaml</code> + <code>info.toml</code> (<code>deployType</code> → dataset por ambiente)</td>
+<td><code>config/environments.yml</code>/<code>datasets.yml</code> não têm esse mapeamento componente→dataset</td>
+<td>Gap real</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Hooks configuráveis pré-build / pós-deploy</strong></td>
+<td>Wazi Deploy permite anexar jobs de validação antes do build ("se não tiver nesses critérios, eu não deixo sequenciar") e jobs adicionais de validação/transformação depois do deploy</td>
+<td>Pipeline fixo (<code>parser → rules_engine → security → dependencies → quality_gate → simulator</code>), sem mecanismo plugável de "jobs adicionais" por componente/ambiente</td>
+<td>Achado novo — não bloqueia o escopo atual (só JCL, regras simples), mas falta se entrarem regras específicas por aplicação na Fase 2</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Tratamento de binário/hex</strong></td>
+<td>Contingência (deles) para componentes hex-declarados</td>
+<td>Guard de binário + <code>.gitattributes</code> + deploy binário — desenhados nesta rodada, <strong>implementação ainda pendente</strong> (seção 4, itens 1–3)</td>
+<td>Gap real — o achado principal, mantido aqui por completude</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Escopo de componentes</strong></td>
+<td>COBOL + Assembler + mapas BMS + Control-M + JCL, com build por componente controlado por variáveis (<code>Cobol.yaml</code>: padrões de arquivo → opções de compilação por variável)</td>
+<td>Só JCL (mais um protótipo de AST de COBOL via ProLeap, <strong>não ligado a build/deploy</strong>)</td>
+<td>Diferença de escopo <strong>deliberada</strong> — a própria Ana recomendou simplificar. Mas se o projeto crescer para COBOL de verdade (compilar, não só parsear), falta a camada de build com dependências entre COBOL/copybook/DB2 (o papel do DBB)</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>Control-M</strong></td>
+<td>Tratado pela mesma esteira, também como binário pelos mesmos motivos</td>
+<td>"Permanece inalterado" — nem entra no nosso repositório/pipeline</td>
+<td>Diferença de escopo deliberada — mas se Control-M entrar no escopo algum dia, herda o mesmo problema de binário que JCL/COPY/PROC</td>
+</tr>
+<tr>
+<td>9</td>
+<td><strong>Prova real de entrega numa biblioteca do mainframe</strong></td>
+<td>Já é a pergunta padrão dela para validar qualquer abordagem nova ("conseguiu conectar e distribuir um componente numa biblioteca?")</td>
+<td>Ainda não feito — item 9b (seção 4), bloqueado por acesso/credenciais</td>
+<td>Bloqueio real, não gap de desenho</td>
+</tr>
+<tr>
+<td>10</td>
+<td><strong>Usuário sistêmico dedicado</strong></td>
+<td>Ela reforçou a importância de um usuário técnico/sistêmico (não pessoal) para toda a cadeia de conectividade</td>
+<td>Já citado de forma genérica em <code>pre-requisitos-ambiente-real.md</code> (seção 3: "conta de serviço... quem provisiona/rotaciona"), nunca destacado como decisão própria</td>
+<td>Já coberto, reforçado aqui por completude</td>
+</tr>
+</tbody>
+</table>
+<p>Itens 1–6 são <strong>gaps reais de implementação</strong> (a arquitetura já foi decidida
+nas seções anteriores, falta código). Itens 7–8 são <strong>diferenças de escopo
+deliberadas</strong>, não pendências. Item 9 é um <strong>bloqueio de acesso</strong>, não de
+desenho. Item 10 já estava coberto, só não estava em destaque.</p>
+</main>
+</body>
+</html>

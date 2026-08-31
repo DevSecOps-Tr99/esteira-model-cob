@@ -85,7 +85,21 @@ que definem várias dessas decisões.
   outbound liberado para GitHub e Maven Central, ou de um artefato
   pré-compilado hospedado internamente.
 
-## 8. Dados de exemplo (LGPD)
+## 8. Componentes hexadecimais/binários
+
+- Levantamento (busca hexadecimal nas bibliotecas reais do escopo) de quais
+  JCLs/PROCs/copybooks já têm caracteres declarados em hexadecimal via
+  ISPF/3270 (`HEX ON`) — o mesmo achado que a Ana (esteira Endevor)
+  reportou na instância CWB. Nenhum componente real conhecido tem isso hoje;
+  a varredura é preventiva. Ver
+  [`reuniao-endevor-jcl-binarios.md`](reuniao-endevor-jcl-binarios.md).
+- ~~Decisão sobre ferramental de deploy~~ **Fechado:** Zowe/z/OSMF + Python
+  direto, sem DBB/Wazi Deploy (decisão de 31/08/2026, seção 5 do documento
+  acima).
+- ~~JFrog Artifactory vs. GitHub Artifacts/Releases~~ **Fechado:** GitHub
+  Artifacts/Releases, a princípio.
+
+## 9. Dados de exemplo (LGPD)
 
 - Se os JCLs/COBOL reais cedidos para a POC tocarem dados de cliente,
   precisam vir sanitizados/mascarados antes de entrar neste repositório

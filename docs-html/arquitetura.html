@@ -41,7 +41,7 @@ blockquote { border-left: 3px solid var(--accent); margin: 0; padding: 4px 16px;
 </style>
 </head>
 <body>
-<nav><h1>esteira-model-cob</h1><a href="index.html" class="">esteira-model-cob</a><a href="como-rodar-manualmente.html" class="">Como rodar manualmente</a><a href="arquitetura.html" class="active">Arquitetura</a><a href="gates.html" class="">Os 3 gates</a><a href="seguranca.html" class="">Seguranca</a><a href="integracao-zos.html" class="">Integracao z/OS</a><a href="gitflow.html" class="">Gitflow</a><a href="ambiente-validacao.html" class="">Ambiente de validacao (VM)</a><a href="poc-demo.html" class="">Roteiro de demo</a><a href="kickoff-perguntas.html" class="">Perguntas de kickoff</a><a href="validacao-tecnica.html" class="">Validacao tecnica</a><a href="pre-requisitos-ambiente-real.html" class="">Pre-requisitos ambiente real</a></nav>
+<nav><h1>esteira-model-cob</h1><a href="index.html" class="">esteira-model-cob</a><a href="como-rodar-manualmente.html" class="">Como rodar manualmente</a><a href="arquitetura.html" class="active">Arquitetura</a><a href="gates.html" class="">Os 3 gates</a><a href="seguranca.html" class="">Seguranca</a><a href="integracao-zos.html" class="">Integracao z/OS</a><a href="gitflow.html" class="">Gitflow</a><a href="ambiente-validacao.html" class="">Ambiente de validacao (VM)</a><a href="poc-demo.html" class="">Roteiro de demo</a><a href="kickoff-perguntas.html" class="">Perguntas de kickoff</a><a href="validacao-tecnica.html" class="">Validacao tecnica</a><a href="pre-requisitos-ambiente-real.html" class="">Pre-requisitos ambiente real</a><a href="reuniao-endevor-jcl-binarios.html" class="">Reuniao Endevor - binarios</a></nav>
 <main>
 <h1 id="arquitetura">Arquitetura</h1>
 <h2 id="principio-orientador">Princípio orientador</h2>
@@ -160,6 +160,15 @@ apenas a camada de disparo.</p>
   classificação completa das regras (técnica, processo, segurança, negócio,
   regulatória) — ver <code>kickoff-perguntas.md</code>.</li>
 </ul>
+<h2 id="gaps-conhecidos-vs-uma-esteira-real-de-migracao-do-endevor">Gaps conhecidos vs. uma esteira real de migração do Endevor</h2>
+<p>O mapeamento acima descreve a intenção arquitetural. Comparado a uma esteira
+real de migração do Endevor já em operação no banco (COBOL/Assembler/mapas/
+Control-M/JCL, ferramental DBB + Wazi Deploy + JFrog), faltam hoje: um
+estágio de build/empacotamento, a gravação do fonte na biblioteca-alvo
+(distinta da submissão do job) e o tratamento de componentes com caracteres
+hexadecimais não roundtrippable (que só podem trafegar como binário). Ver
+<a href="reuniao-endevor-jcl-binarios.html"><code>reuniao-endevor-jcl-binarios.md</code></a> para o
+paralelo completo, a lista de diferenças e o plano de ação.</p>
 <h2 id="ambiente-de-validacao">Ambiente de validação</h2>
 <p>O GitHub Actions hospedado pela GitHub roda o <code>pytest</code> e o wrapper do
 ProLeap (via <code>actions/setup-java</code>), mas não alcança rede interna. Para

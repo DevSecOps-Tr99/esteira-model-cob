@@ -41,13 +41,13 @@ blockquote { border-left: 3px solid var(--accent); margin: 0; padding: 4px 16px;
 </style>
 </head>
 <body>
-<nav><h1>esteira-model-cob</h1><a href="index.html" class="">esteira-model-cob</a><a href="como-rodar-manualmente.html" class="">Como rodar manualmente</a><a href="arquitetura.html" class="">Arquitetura</a><a href="gates.html" class="">Os 3 gates</a><a href="seguranca.html" class="">Seguranca</a><a href="integracao-zos.html" class="">Integracao z/OS</a><a href="gitflow.html" class="">Gitflow</a><a href="ambiente-validacao.html" class="">Ambiente de validacao (VM)</a><a href="poc-demo.html" class="">Roteiro de demo</a><a href="kickoff-perguntas.html" class="">Perguntas de kickoff</a><a href="validacao-tecnica.html" class="">Validacao tecnica</a><a href="pre-requisitos-ambiente-real.html" class="active">Pre-requisitos ambiente real</a></nav>
+<nav><h1>esteira-model-cob</h1><a href="index.html" class="">esteira-model-cob</a><a href="como-rodar-manualmente.html" class="">Como rodar manualmente</a><a href="arquitetura.html" class="">Arquitetura</a><a href="gates.html" class="">Os 3 gates</a><a href="seguranca.html" class="">Seguranca</a><a href="integracao-zos.html" class="">Integracao z/OS</a><a href="gitflow.html" class="">Gitflow</a><a href="ambiente-validacao.html" class="">Ambiente de validacao (VM)</a><a href="poc-demo.html" class="">Roteiro de demo</a><a href="kickoff-perguntas.html" class="">Perguntas de kickoff</a><a href="validacao-tecnica.html" class="">Validacao tecnica</a><a href="pre-requisitos-ambiente-real.html" class="active">Pre-requisitos ambiente real</a><a href="reuniao-endevor-jcl-binarios.html" class="">Reuniao Endevor - binarios</a></nav>
 <main>
 <h1 id="pre-requisitos-para-montar-esta-poc-no-ambiente-real">Pré-requisitos para montar esta POC no ambiente real</h1>
 <p>O que precisa existir ou ser provisionado para portar esta POC do ambiente
 de demonstração atual (VM Azure fora da rede do banco, repositório em
 <code>DevSecOps-Tr99/esteira-model-cob</code>) para o ambiente real do banco. Ver
-também <a href="validacao-tecnica.md"><code>validacao-tecnica.md</code></a> para as perguntas
+também <a href="validacao-tecnica.html"><code>validacao-tecnica.md</code></a> para as perguntas
 que definem várias dessas decisões.</p>
 <h2 id="1-github-plataforma">1. GitHub (plataforma)</h2>
 <ul>
@@ -128,7 +128,21 @@ que definem várias dessas decisões.</p>
   outbound liberado para GitHub e Maven Central, ou de um artefato
   pré-compilado hospedado internamente.</li>
 </ul>
-<h2 id="8-dados-de-exemplo-lgpd">8. Dados de exemplo (LGPD)</h2>
+<h2 id="8-componentes-hexadecimaisbinarios">8. Componentes hexadecimais/binários</h2>
+<ul>
+<li>Levantamento (busca hexadecimal nas bibliotecas reais do escopo) de quais
+  JCLs/PROCs/copybooks já têm caracteres declarados em hexadecimal via
+  ISPF/3270 (<code>HEX ON</code>) — o mesmo achado que a Ana (esteira Endevor)
+  reportou na instância CWB. Nenhum componente real conhecido tem isso hoje;
+  a varredura é preventiva. Ver
+  <a href="reuniao-endevor-jcl-binarios.html"><code>reuniao-endevor-jcl-binarios.md</code></a>.</li>
+<li><del>Decisão sobre ferramental de deploy</del> <strong>Fechado:</strong> Zowe/z/OSMF + Python
+  direto, sem DBB/Wazi Deploy (decisão de 31/08/2026, seção 5 do documento
+  acima).</li>
+<li><del>JFrog Artifactory vs. GitHub Artifacts/Releases</del> <strong>Fechado:</strong> GitHub
+  Artifacts/Releases, a princípio.</li>
+</ul>
+<h2 id="9-dados-de-exemplo-lgpd">9. Dados de exemplo (LGPD)</h2>
 <ul>
 <li>Se os JCLs/COBOL reais cedidos para a POC tocarem dados de cliente,
   precisam vir sanitizados/mascarados antes de entrar neste repositório
