@@ -152,34 +152,56 @@ byte em si.
    `requires_binary_transfer` e vira um finding no Quality Gate (hoje o
    pipeline nem chegaria a rodar sem quebrar, se um desses componentes
    entrasse como texto). Tratamento **definitivo** (ver decisão na seção 2),
-   não um workaround a remover depois.
+   não um workaround a remover depois. **→ Implementado:**
+   `esteira_model_cob/binary_guard.py` + comando `binary-guard`
+   (`esteira_model_cob/cli.py`). Contrato importante descoberto ao
+   implementar: os valores da tabela só fazem sentido sobre bytes EBCDIC
+   crus — os mesmos números (0x00-0x3F) são dígitos e pontuação comuns em
+   ASCII/UTF-8, então o guard **não** roda sobre o JCL versionado em `jcl/`
+   (isso seria falso positivo); ele é um comando/caminho separado, para
+   bytes ainda não convertidos vindos do mainframe. Ver docstring do
+   módulo.
 2. **`.gitattributes`.** Definir JCL/COPY/PROC como texto por padrão, com
    instrução documentada de como marcar um componente específico como
    binário (`-text -diff`) quando o guard do item 1 o sinalizar — até termos
-   automação completa disso.
+   automação completa disso. **→ Implementado:** `.gitattributes` na raiz
+   do repositório.
 3. **Massa de teste com hex embutido.** Como nenhum JCL/PROC real do nosso
-   escopo tem hoje esse tipo de caractere, criar 1–2 fixtures sintéticos em
-   `jcl/`/`proc/` com bytes da tabela `desafios-binarios.txt` embutidos
-   (gerados via script, não digitados à mão — para garantir os bytes
-   exatos), cobrindo o caso `non-roundtrippable` e o caso `non-printable`.
-   É o que valida de ponta a ponta o guard do item 1, o `.gitattributes` do
+   escopo tem hoje esse tipo de caractere, criar 1–2 fixtures sintéticos
+   cobrindo o caso `non-roundtrippable` e o caso `non-printable` (gerados
+   via script, não digitados à mão — para garantir os bytes exatos). É o
+   que valida de ponta a ponta o guard do item 1, o `.gitattributes` do
    item 2 e o caminho de deploy binário do item 5, sem depender de acesso
-   real ao mainframe.
+   real ao mainframe. **→ Implementado, com um ajuste em relação ao plano
+   original:** as fixtures não ficam em `jcl/`/`proc/` como texto ASCII com
+   bytes embutidos — pelo motivo explicado no item 1 (os mesmos valores
+   numéricos são inofensivos em ASCII), elas precisam ser bytes EBCDIC
+   genuínos. `scripts/gen_test_fixtures.py` codifica um trecho de copybook
+   em `cp037` e grava duas versões em `tests/fixtures/`: uma limpa
+   (`copybook_ebcdic_limpo.bin`) e uma com 2 bytes de controle inseridos
+   (`copybook_ebcdic_hex_declarado.bin`) — cobertas por
+   `tests/test_binary_guard.py`.
 4. **Modelar a segunda API do z/OSMF.** Atualizar `docs/integracao-zos.md`
    com a distinção Jobs REST API (execução, já documentada) vs. **Files
    REST API** (`PUT /zosmf/restfiles/ds/...`, parâmetro de encoding
    `binary`) ou `zowe zos-files upload file-to-data-set --binary` — caminho
    **confirmado** (seção 1): Zowe/z/OSMF + Python direto, sem DBB/Wazi
-   Deploy.
+   Deploy. **→ Documentado** (seção "Gravação do fonte..." em
+   `integracao-zos.md`); implementação de código só na Fase 2, quando
+   houver acesso real ao mainframe (item 9b).
 5. **Classificação de artefato → biblioteca-alvo.** Adicionar ao `config/`
    um equivalente enxuto do `deployType`/`Transfer.yaml`/`info.toml` da
    Ana (nosso escopo é só JCL, então bem mais simples): mapear
    ambiente (`TU`/`TI`/`PRD`) → dataset-alvo, e permitir marcar
-   `copyMode: binary` por componente.
+   `copyMode: binary` por componente. **→ Implementado:**
+   `config/deploy_targets.yml` + `esteira_model_cob/deploy_targets.py`,
+   exibido na nova seção DEPLOY do JCL Pipeline Report
+   (`python -m esteira_model_cob report jcl/poc001_sucesso.jcl --env TI`).
 6. **Repositório de artefatos: GitHub Artifacts/Releases.** Confirmado
    (seção 1) como caminho inicial, sem JFrog Artifactory — implementar
    como parte do empacotamento (item ainda em aberto na Fase 1: não existe
-   empacotamento hoje, só validação/simulação).
+   empacotamento hoje, só validação/simulação). Continua pendente — não
+   há estágio de build/empacotamento nesta rodada (ver seção 6, item 1).
 7. **Referenciar este documento** a partir de `integracao-zos.md`,
    `pre-requisitos-ambiente-real.md` e `validacao-tecnica.md` (feito).
 
@@ -262,15 +284,17 @@ código, ficam estas:
 | 1 | **Estágio de build/empacotamento** | Z Builder builda o componente e já marca o `deployType` | Não existe — Fase 1 só valida (`rules_engine.py`) e simula (`MockZosAdapter`); nenhum artefato é empacotado | Gap real |
 | 2 | **Repositório de artefatos** | JFrog Artifactory | Decidido GitHub Artifacts/Releases, mas **nada é publicado como artifact hoje** — é só um mapeamento no doc | Gap real (decisão fechada, implementação pendente) |
 | 3 | **Gravar o fonte na biblioteca-alvo (deploy)** | Wazi Deploy: consulta `deployType`, decide dataset por ambiente, grava | Só existe o desenho da `Jobs REST API` (execução); a `Files REST API` (gravação do fonte, modo binário) está documentada agora mas **não implementada** | Gap real — já registrado nas seções 3–4 |
-| 4 | **Classificação artefato → biblioteca-alvo por ambiente** | `Transfer.yaml` + `info.toml` (`deployType` → dataset por ambiente) | `config/environments.yml`/`datasets.yml` não têm esse mapeamento componente→dataset | Gap real |
+| 4 | **Classificação artefato → biblioteca-alvo por ambiente** | `Transfer.yaml` + `info.toml` (`deployType` → dataset por ambiente) | **Implementado:** `config/deploy_targets.yml` + `esteira_model_cob/deploy_targets.py`, exibido na seção DEPLOY do JCL Pipeline Report | Fechado |
 | 5 | **Hooks configuráveis pré-build / pós-deploy** | Wazi Deploy permite anexar jobs de validação antes do build ("se não tiver nesses critérios, eu não deixo sequenciar") e jobs adicionais de validação/transformação depois do deploy | Pipeline fixo (`parser → rules_engine → security → dependencies → quality_gate → simulator`), sem mecanismo plugável de "jobs adicionais" por componente/ambiente | Achado novo — não bloqueia o escopo atual (só JCL, regras simples), mas falta se entrarem regras específicas por aplicação na Fase 2 |
-| 6 | **Tratamento de binário/hex** | Contingência (deles) para componentes hex-declarados | Guard de binário + `.gitattributes` + deploy binário — desenhados nesta rodada, **implementação ainda pendente** (seção 4, itens 1–3) | Gap real — o achado principal, mantido aqui por completude |
+| 6 | **Tratamento de binário/hex** | Contingência (deles) para componentes hex-declarados | **Implementado:** `esteira_model_cob/binary_guard.py` + comando `binary-guard` + `.gitattributes` + massa de teste EBCDIC sintética (`tests/fixtures/`, `scripts/gen_test_fixtures.py`) | Fechado — o achado principal, mantido aqui por completude |
 | 7 | **Escopo de componentes** | COBOL + Assembler + mapas BMS + Control-M + JCL, com build por componente controlado por variáveis (`Cobol.yaml`: padrões de arquivo → opções de compilação por variável) | Só JCL (mais um protótipo de AST de COBOL via ProLeap, **não ligado a build/deploy**) | Diferença de escopo **deliberada** — a própria Ana recomendou simplificar. Mas se o projeto crescer para COBOL de verdade (compilar, não só parsear), falta a camada de build com dependências entre COBOL/copybook/DB2 (o papel do DBB) |
 | 8 | **Control-M** | Tratado pela mesma esteira, também como binário pelos mesmos motivos | "Permanece inalterado" — nem entra no nosso repositório/pipeline | Diferença de escopo deliberada — mas se Control-M entrar no escopo algum dia, herda o mesmo problema de binário que JCL/COPY/PROC |
 | 9 | **Prova real de entrega numa biblioteca do mainframe** | Já é a pergunta padrão dela para validar qualquer abordagem nova ("conseguiu conectar e distribuir um componente numa biblioteca?") | Ainda não feito — item 9b (seção 4), bloqueado por acesso/credenciais | Bloqueio real, não gap de desenho |
 | 10 | **Usuário sistêmico dedicado** | Ela reforçou a importância de um usuário técnico/sistêmico (não pessoal) para toda a cadeia de conectividade | Já citado de forma genérica em `pre-requisitos-ambiente-real.md` (seção 3: "conta de serviço... quem provisiona/rotaciona"), nunca destacado como decisão própria | Já coberto, reforçado aqui por completude |
 
-Itens 1–6 são **gaps reais de implementação** (a arquitetura já foi decidida
-nas seções anteriores, falta código). Itens 7–8 são **diferenças de escopo
-deliberadas**, não pendências. Item 9 é um **bloqueio de acesso**, não de
+Itens 4 e 6 foram fechados nesta rodada (código + testes, ver seção 4).
+Itens 1–3 e 5 seguem como **gaps reais de implementação** (a arquitetura já
+foi decidida nas seções anteriores, falta código). Itens 7–8 são
+**diferenças de escopo deliberadas**, não pendências. Item 9 é um
+**bloqueio de acesso**, não de
 desenho. Item 10 já estava coberto, só não estava em destaque.

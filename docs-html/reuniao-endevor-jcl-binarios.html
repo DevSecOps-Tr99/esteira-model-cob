@@ -227,34 +227,56 @@ byte em si.</p>
    <code>requires_binary_transfer</code> e vira um finding no Quality Gate (hoje o
    pipeline nem chegaria a rodar sem quebrar, se um desses componentes
    entrasse como texto). Tratamento <strong>definitivo</strong> (ver decisão na seção 2),
-   não um workaround a remover depois.</li>
+   não um workaround a remover depois. <strong>→ Implementado:</strong>
+   <code>esteira_model_cob/binary_guard.py</code> + comando <code>binary-guard</code>
+   (<code>esteira_model_cob/cli.py</code>). Contrato importante descoberto ao
+   implementar: os valores da tabela só fazem sentido sobre bytes EBCDIC
+   crus — os mesmos números (0x00-0x3F) são dígitos e pontuação comuns em
+   ASCII/UTF-8, então o guard <strong>não</strong> roda sobre o JCL versionado em <code>jcl/</code>
+   (isso seria falso positivo); ele é um comando/caminho separado, para
+   bytes ainda não convertidos vindos do mainframe. Ver docstring do
+   módulo.</li>
 <li><strong><code>.gitattributes</code>.</strong> Definir JCL/COPY/PROC como texto por padrão, com
    instrução documentada de como marcar um componente específico como
    binário (<code>-text -diff</code>) quando o guard do item 1 o sinalizar — até termos
-   automação completa disso.</li>
+   automação completa disso. <strong>→ Implementado:</strong> <code>.gitattributes</code> na raiz
+   do repositório.</li>
 <li><strong>Massa de teste com hex embutido.</strong> Como nenhum JCL/PROC real do nosso
-   escopo tem hoje esse tipo de caractere, criar 1–2 fixtures sintéticos em
-   <code>jcl/</code>/<code>proc/</code> com bytes da tabela <code>desafios-binarios.txt</code> embutidos
-   (gerados via script, não digitados à mão — para garantir os bytes
-   exatos), cobrindo o caso <code>non-roundtrippable</code> e o caso <code>non-printable</code>.
-   É o que valida de ponta a ponta o guard do item 1, o <code>.gitattributes</code> do
+   escopo tem hoje esse tipo de caractere, criar 1–2 fixtures sintéticos
+   cobrindo o caso <code>non-roundtrippable</code> e o caso <code>non-printable</code> (gerados
+   via script, não digitados à mão — para garantir os bytes exatos). É o
+   que valida de ponta a ponta o guard do item 1, o <code>.gitattributes</code> do
    item 2 e o caminho de deploy binário do item 5, sem depender de acesso
-   real ao mainframe.</li>
+   real ao mainframe. <strong>→ Implementado, com um ajuste em relação ao plano
+   original:</strong> as fixtures não ficam em <code>jcl/</code>/<code>proc/</code> como texto ASCII com
+   bytes embutidos — pelo motivo explicado no item 1 (os mesmos valores
+   numéricos são inofensivos em ASCII), elas precisam ser bytes EBCDIC
+   genuínos. <code>scripts/gen_test_fixtures.py</code> codifica um trecho de copybook
+   em <code>cp037</code> e grava duas versões em <code>tests/fixtures/</code>: uma limpa
+   (<code>copybook_ebcdic_limpo.bin</code>) e uma com 2 bytes de controle inseridos
+   (<code>copybook_ebcdic_hex_declarado.bin</code>) — cobertas por
+   <code>tests/test_binary_guard.py</code>.</li>
 <li><strong>Modelar a segunda API do z/OSMF.</strong> Atualizar <code>docs/integracao-zos.md</code>
    com a distinção Jobs REST API (execução, já documentada) vs. <strong>Files
    REST API</strong> (<code>PUT /zosmf/restfiles/ds/...</code>, parâmetro de encoding
    <code>binary</code>) ou <code>zowe zos-files upload file-to-data-set --binary</code> — caminho
    <strong>confirmado</strong> (seção 1): Zowe/z/OSMF + Python direto, sem DBB/Wazi
-   Deploy.</li>
+   Deploy. <strong>→ Documentado</strong> (seção "Gravação do fonte..." em
+   <code>integracao-zos.md</code>); implementação de código só na Fase 2, quando
+   houver acesso real ao mainframe (item 9b).</li>
 <li><strong>Classificação de artefato → biblioteca-alvo.</strong> Adicionar ao <code>config/</code>
    um equivalente enxuto do <code>deployType</code>/<code>Transfer.yaml</code>/<code>info.toml</code> da
    Ana (nosso escopo é só JCL, então bem mais simples): mapear
    ambiente (<code>TU</code>/<code>TI</code>/<code>PRD</code>) → dataset-alvo, e permitir marcar
-   <code>copyMode: binary</code> por componente.</li>
+   <code>copyMode: binary</code> por componente. <strong>→ Implementado:</strong>
+   <code>config/deploy_targets.yml</code> + <code>esteira_model_cob/deploy_targets.py</code>,
+   exibido na nova seção DEPLOY do JCL Pipeline Report
+   (<code>python -m esteira_model_cob report jcl/poc001_sucesso.jcl --env TI</code>).</li>
 <li><strong>Repositório de artefatos: GitHub Artifacts/Releases.</strong> Confirmado
    (seção 1) como caminho inicial, sem JFrog Artifactory — implementar
    como parte do empacotamento (item ainda em aberto na Fase 1: não existe
-   empacotamento hoje, só validação/simulação).</li>
+   empacotamento hoje, só validação/simulação). Continua pendente — não
+   há estágio de build/empacotamento nesta rodada (ver seção 6, item 1).</li>
 <li><strong>Referenciar este documento</strong> a partir de <code>integracao-zos.md</code>,
    <code>pre-requisitos-ambiente-real.md</code> e <code>validacao-tecnica.md</code> (feito).</li>
 </ol>
@@ -385,8 +407,8 @@ código, ficam estas:</p>
 <td>4</td>
 <td><strong>Classificação artefato → biblioteca-alvo por ambiente</strong></td>
 <td><code>Transfer.yaml</code> + <code>info.toml</code> (<code>deployType</code> → dataset por ambiente)</td>
-<td><code>config/environments.yml</code>/<code>datasets.yml</code> não têm esse mapeamento componente→dataset</td>
-<td>Gap real</td>
+<td><strong>Implementado:</strong> <code>config/deploy_targets.yml</code> + <code>esteira_model_cob/deploy_targets.py</code>, exibido na seção DEPLOY do JCL Pipeline Report</td>
+<td>Fechado</td>
 </tr>
 <tr>
 <td>5</td>
@@ -399,8 +421,8 @@ código, ficam estas:</p>
 <td>6</td>
 <td><strong>Tratamento de binário/hex</strong></td>
 <td>Contingência (deles) para componentes hex-declarados</td>
-<td>Guard de binário + <code>.gitattributes</code> + deploy binário — desenhados nesta rodada, <strong>implementação ainda pendente</strong> (seção 4, itens 1–3)</td>
-<td>Gap real — o achado principal, mantido aqui por completude</td>
+<td><strong>Implementado:</strong> <code>esteira_model_cob/binary_guard.py</code> + comando <code>binary-guard</code> + <code>.gitattributes</code> + massa de teste EBCDIC sintética (<code>tests/fixtures/</code>, <code>scripts/gen_test_fixtures.py</code>)</td>
+<td>Fechado — o achado principal, mantido aqui por completude</td>
 </tr>
 <tr>
 <td>7</td>
@@ -432,9 +454,11 @@ código, ficam estas:</p>
 </tr>
 </tbody>
 </table>
-<p>Itens 1–6 são <strong>gaps reais de implementação</strong> (a arquitetura já foi decidida
-nas seções anteriores, falta código). Itens 7–8 são <strong>diferenças de escopo
-deliberadas</strong>, não pendências. Item 9 é um <strong>bloqueio de acesso</strong>, não de
+<p>Itens 4 e 6 foram fechados nesta rodada (código + testes, ver seção 4).
+Itens 1–3 e 5 seguem como <strong>gaps reais de implementação</strong> (a arquitetura já
+foi decidida nas seções anteriores, falta código). Itens 7–8 são
+<strong>diferenças de escopo deliberadas</strong>, não pendências. Item 9 é um
+<strong>bloqueio de acesso</strong>, não de
 desenho. Item 10 já estava coberto, só não estava em destaque.</p>
 </main>
 </body>

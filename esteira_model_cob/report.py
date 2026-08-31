@@ -9,6 +9,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .deploy_targets import DeployTarget
 from .parser import JclJob
 from .quality_gate import QualityGateResult
 from .security import SecurityVerdict
@@ -20,6 +21,7 @@ def render_report(
     quality: QualityGateResult,
     security: SecurityVerdict,
     simulation: SimulationResult,
+    deploy: DeployTarget | None = None,
 ) -> str:
     lines: list[str] = []
     lines.append("JCL PIPELINE REPORT")
@@ -54,6 +56,14 @@ def render_report(
     else:
         lines.append(f"Execucao ............. NAO EXECUTADO ({simulation.reason})")
     lines.append("")
+
+    if deploy is not None:
+        lines.append("DEPLOY")
+        lines.append("-" * 40)
+        lines.append(f"Ambiente ............. {deploy.environment}")
+        lines.append(f"Biblioteca-alvo ...... {deploy.library}")
+        lines.append(f"Modo de transferencia . {deploy.copy_mode.upper()}")
+        lines.append("")
 
     overall = "APPROVED" if security.passed and quality.status != "FAILED" else "BLOCKED"
     lines.append("STATUS")

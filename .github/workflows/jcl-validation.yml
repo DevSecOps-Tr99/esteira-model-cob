@@ -67,6 +67,15 @@ jobs:
         continue-on-error: true
         run: python -m esteira_model_cob simulate jcl/
 
+      # tests/fixtures/*.bin sao bytes EBCDIC (cp037) - uma fixture limpa e
+      # uma com bytes de controle hard-coded (achado da esteira Endevor
+      # real - ver docs/reuniao-endevor-jcl-binarios.md). continue-on-error
+      # porque a fixture "hex_declarado" e reprovada por design (pytest ja
+      # cobre isso via assert; isto e a saida "ao vivo" da demo).
+      - name: Binary guard - massa de teste EBCDIC (jcl/proc reais nao tem hoje)
+        continue-on-error: true
+        run: python -m esteira_model_cob binary-guard tests/fixtures/
+
       - name: Gerar JCL Pipeline Report
         if: always()
         run: |
@@ -96,6 +105,14 @@ jobs:
         || startsWith(github.ref_name, 'hotfix/') && 'PRD'
         || 'TU'
       }}
+    env:
+      ESTM_ENV: >-
+        ${{
+          github.ref_name == 'main' && 'PRD'
+          || startsWith(github.ref_name, 'release/') && 'TI'
+          || startsWith(github.ref_name, 'hotfix/') && 'PRD'
+          || 'TU'
+        }}
 
     steps:
       - uses: actions/checkout@v4
@@ -122,11 +139,20 @@ jobs:
         continue-on-error: true
         run: python -m esteira_model_cob simulate jcl/
 
+      # tests/fixtures/*.bin sao bytes EBCDIC (cp037) - uma fixture limpa e
+      # uma com bytes de controle hard-coded (achado da esteira Endevor
+      # real - ver docs/reuniao-endevor-jcl-binarios.md). continue-on-error
+      # porque a fixture "hex_declarado" e reprovada por design (pytest ja
+      # cobre isso via assert; isto e a saida "ao vivo" da demo).
+      - name: Binary guard - massa de teste EBCDIC (jcl/proc reais nao tem hoje)
+        continue-on-error: true
+        run: python -m esteira_model_cob binary-guard tests/fixtures/
+
       - name: Gerar JCL Pipeline Report
         if: always()
         run: |
           for jcl in jcl/*.jcl; do
-            python -m esteira_model_cob report "$jcl"
+            python -m esteira_model_cob report "$jcl" --env "$ESTM_ENV"
           done
 
       # "Publicacao" da POC: promove o commit validado para uma pasta
@@ -135,14 +161,6 @@ jobs:
       # no fluxo atual. Fase 2 troca isso pela submissao real via z/OSMF.
       - name: Publicar artefatos validados no ambiente
         if: always()
-        env:
-          ESTM_ENV: >-
-            ${{
-              github.ref_name == 'main' && 'PRD'
-              || startsWith(github.ref_name, 'release/') && 'TI'
-              || startsWith(github.ref_name, 'hotfix/') && 'PRD'
-              || 'TU'
-            }}
         run: |
           set -euo pipefail
           DEST="$HOME/publicado/${ESTM_ENV}/${GITHUB_RUN_NUMBER}-${GITHUB_SHA::8}"

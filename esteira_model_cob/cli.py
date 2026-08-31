@@ -11,10 +11,11 @@ import argparse
 import sys
 from pathlib import Path
 
-from . import __version__
+from . import __version__, binary_guard
 from .adapters.mock_zos import MockZosAdapter
 from .cobol_ast.proleap_client import ProLeapUnavailableError, dump_ast
 from .dependencies import resolve_dependencies
+from .deploy_targets import load_deploy_targets, resolve as resolve_deploy_target
 from .parser import parse_jcl_file
 from .quality_gate import compute_score
 from .report import render_report, write_report
@@ -25,6 +26,7 @@ from .simulator import simulate
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _RULES_PATH = _REPO_ROOT / "config" / "rules.yml"
 _DATASETS_PATH = _REPO_ROOT / "config" / "datasets.yml"
+_DEPLOY_TARGETS_PATH = _REPO_ROOT / "config" / "deploy_targets.yml"
 _PROC_DIR = _REPO_ROOT / "proc"
 
 
@@ -32,6 +34,12 @@ def _iter_jcl_files(target: Path) -> list[Path]:
     if target.is_file():
         return [target]
     return sorted(target.glob("*.jcl"))
+
+
+def _iter_any_files(target: Path) -> list[Path]:
+    if target.is_file():
+        return [target]
+    return sorted(p for p in target.rglob("*") if p.is_file())
 
 
 def _run_gates(jcl_path: Path):
@@ -92,15 +100,44 @@ def cmd_simulate(args: argparse.Namespace) -> int:
 def cmd_report(args: argparse.Namespace) -> int:
     target = Path(args.path)
     adapter = MockZosAdapter()
+    deploy_config = load_deploy_targets(_DEPLOY_TARGETS_PATH)
 
     for jcl_path in _iter_jcl_files(target):
         job, quality, security, _deps = _run_gates(jcl_path)
         simulation = simulate(job, quality, adapter)
-        report_text = render_report(job, quality, security, simulation)
+        deploy = resolve_deploy_target(deploy_config, "jcl", args.env)
+        report_text = render_report(job, quality, security, simulation, deploy)
         out_file = write_report(report_text, job.job_name)
         print(f"Relatorio gerado: {out_file}")
 
     return 0
+
+
+def cmd_binary_guard(args: argparse.Namespace) -> int:
+    """Varre bytes crus (EBCDIC) em busca de caracteres de controle
+    hard-coded - ver esteira_model_cob/binary_guard.py. Nao roda sobre o
+    JCL ASCII/UTF-8 de jcl/ (validate/report cuidam desse caminho); e para
+    bytes ja baixados do mainframe (ou, nesta POC, as fixtures em
+    tests/fixtures/ geradas por scripts/gen_test_fixtures.py).
+    """
+    target = Path(args.path)
+    exit_code = 0
+
+    for file_path in _iter_any_files(target):
+        findings = binary_guard.evaluate(file_path)
+        quality = compute_score(findings)
+        security = evaluate_security(findings)
+
+        print(f"\n{file_path}")
+        print(f"  Quality Gate ..... {quality.status} ({quality.score}/100)")
+        for finding in findings:
+            print(f"    [{finding.severity.upper():<8}] {finding.rule_id} {finding.name}: {finding.message}")
+        print(f"  Security Gate .... {security.status}")
+
+        if quality.status == "FAILED":
+            exit_code = 1
+
+    return exit_code
 
 
 def cmd_cobol_ast(args: argparse.Namespace) -> int:
@@ -129,11 +166,21 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_report = subparsers.add_parser("report", help="Gera o JCL Pipeline Report em reports/")
     p_report.add_argument("path", help="Arquivo .jcl ou pasta com JCLs")
+    p_report.add_argument(
+        "--env", default="TU", choices=["TU", "TI", "PRD"], help="Ambiente para resolver a biblioteca-alvo do deploy"
+    )
     p_report.set_defaults(func=cmd_report)
 
     p_cobol_ast = subparsers.add_parser("cobol-ast", help="Gera o AST de um COBOL via ProLeap")
     p_cobol_ast.add_argument("path", help="Arquivo .cbl")
     p_cobol_ast.set_defaults(func=cmd_cobol_ast)
+
+    p_binary_guard = subparsers.add_parser(
+        "binary-guard",
+        help="Varre bytes EBCDIC crus em busca de caracteres de controle hard-coded (nao roda sobre JCL ASCII)",
+    )
+    p_binary_guard.add_argument("path", help="Arquivo ou pasta com bytes EBCDIC crus")
+    p_binary_guard.set_defaults(func=cmd_binary_guard)
 
     return parser
 

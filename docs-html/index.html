@@ -56,8 +56,13 @@ python -m esteira_model_cob validate jcl/
 # simula a submissão de um job aprovado no MockZosAdapter
 python -m esteira_model_cob simulate jcl/poc001_sucesso.jcl
 
-# gera o JCL Pipeline Report em reports/
-python -m esteira_model_cob report jcl/poc001_sucesso.jcl
+# gera o JCL Pipeline Report em reports/ (--env TU|TI|PRD resolve a biblioteca-alvo)
+python -m esteira_model_cob report jcl/poc001_sucesso.jcl --env TU
+
+# guarda de binario: bytes EBCDIC crus com caracteres de controle hard-coded
+# (achado da esteira Endevor real - ver docs/reuniao-endevor-jcl-binarios.md)
+python scripts/gen_test_fixtures.py
+python -m esteira_model_cob binary-guard tests/fixtures/
 
 # proleap-cobol-parser nao esta no Maven Central - compila da fonte uma vez
 bash scripts/install_proleap.sh

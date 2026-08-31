@@ -26,6 +26,38 @@ python -m esteira_model_cob report jcl/poc002_warning.jcl
 python -m esteira_model_cob report jcl/poc003_bloqueado.jcl
 ```
 
+## 4º cenário: guarda de binário (achado da esteira Endevor real)
+
+Diferente dos 3 JCLs acima (texto ASCII versionado normalmente), este
+cenário prova a mitigação para o ponto de atenção trazido pela Ana
+(esteira real de migração do Endevor do banco — ver
+`docs/reuniao-endevor-jcl-binarios.md`): componentes com caracteres
+hexadecimais hard-coded (`HEX ON` no editor do ISPF/3270) só podem
+trafegar como binário — qualquer conversão para texto/UTF-8 corrompe o
+dado. `binary_guard.py` varre bytes EBCDIC crus em busca desses valores,
+**antes** de qualquer decodificação para texto.
+
+Como nenhum JCL/PROC real do escopo atual tem esse problema hoje,
+`scripts/gen_test_fixtures.py` gera duas massas de teste sintéticas —
+bytes EBCDIC (`cp037`) genuínos, não digitados à mão — em
+`tests/fixtures/`: uma limpa e outra com 2 bytes de controle inseridos
+(simulando o achado real).
+
+```bash
+python scripts/gen_test_fixtures.py
+
+python -m esteira_model_cob binary-guard tests/fixtures/
+# copybook_ebcdic_limpo.bin            -> Quality Gate PASS (100/100)
+# copybook_ebcdic_hex_declarado.bin    -> Quality Gate FAILED (0/100), BIN001, Security Gate FAILED
+```
+
+Importante: este comando **não** roda sobre o JCL ASCII em `jcl/` — os
+mesmos valores de byte 0x00-0x3F são dígitos e pontuação legítimos em
+ASCII (ver contrato documentado no topo de
+`esteira_model_cob/binary_guard.py`). `validate`/`simulate`/`report`
+continuam intocados; o guard é um caminho separado, para bytes crus
+vindos do mainframe.
+
 ## Roteiro de apresentação ponta a ponta
 
 Dev altera JCL no VS Code → `git push` → Pull Request → GitHub Actions
