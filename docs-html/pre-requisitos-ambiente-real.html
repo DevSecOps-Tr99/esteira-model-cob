@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<title>Pre-requisitos ambiente real - esteira-model-cob</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+  --bg: #ffffff; --fg: #1a1a1a; --muted: #5b6270; --border: #e2e5eb;
+  --code-bg: #f4f5f7; --accent: #2f5fd6; --nav-bg: #f7f8fa;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #14161a; --fg: #e7e9ec; --muted: #9aa1ad; --border: #2b2f37;
+    --code-bg: #1d2026; --accent: #7fa4ff; --nav-bg: #1a1d23; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+  font-family: -apple-system, Segoe UI, Helvetica, Arial, sans-serif;
+  display: flex; min-height: 100vh; }
+nav { width: 260px; flex-shrink: 0; background: var(--nav-bg); border-right: 1px solid var(--border);
+  padding: 24px 16px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+nav h1 { font-size: 15px; margin: 0 0 16px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+nav a { display: block; padding: 6px 8px; border-radius: 6px; color: var(--fg); text-decoration: none; font-size: 14px; }
+nav a:hover { background: var(--code-bg); }
+nav a.active { background: var(--accent); color: #fff; }
+main { flex: 1; max-width: 860px; margin: 0 auto; padding: 40px 32px 80px; overflow-x: auto; }
+h1, h2, h3 { line-height: 1.3; }
+h1 { font-size: 28px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+h2 { font-size: 21px; margin-top: 40px; }
+h3 { font-size: 17px; }
+p, li { line-height: 1.6; }
+a { color: var(--accent); }
+code { background: var(--code-bg); padding: 2px 5px; border-radius: 4px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+pre code { background: none; padding: 0; }
+table { border-collapse: collapse; width: 100%; margin: 16px 0; overflow-x: auto; display: block; }
+th, td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; font-size: 14px; }
+th { background: var(--code-bg); }
+blockquote { border-left: 3px solid var(--accent); margin: 0; padding: 4px 16px; color: var(--muted); }
+.mermaid-note { color: var(--muted); font-size: 13px; font-style: italic; }
+</style>
+</head>
+<body>
+<nav><h1>esteira-model-cob</h1><a href="index.html" class="">esteira-model-cob</a><a href="como-rodar-manualmente.html" class="">Como rodar manualmente</a><a href="arquitetura.html" class="">Arquitetura</a><a href="gates.html" class="">Os 3 gates</a><a href="seguranca.html" class="">Seguranca</a><a href="integracao-zos.html" class="">Integracao z/OS</a><a href="gitflow.html" class="">Gitflow</a><a href="ambiente-validacao.html" class="">Ambiente de validacao (VM)</a><a href="poc-demo.html" class="">Roteiro de demo</a><a href="kickoff-perguntas.html" class="">Perguntas de kickoff</a><a href="validacao-tecnica.html" class="">Validacao tecnica</a><a href="pre-requisitos-ambiente-real.html" class="active">Pre-requisitos ambiente real</a><a href="reuniao-endevor-jcl-binarios.html" class="">Reuniao Endevor - binarios</a><a href="jcl-parametros-por-ambiente.html" class="">JCL - parametros por ambiente</a></nav>
+<main>
+<h1 id="pre-requisitos-para-montar-esta-poc-no-ambiente-real">Pré-requisitos para montar esta POC no ambiente real</h1>
+<p>O que precisa existir ou ser provisionado para portar esta POC do ambiente
+de demonstração atual (VM Azure fora da rede do banco, repositório em
+<code>DevSecOps-Tr99/esteira-model-cob</code>) para o ambiente real do banco. Ver
+também <a href="validacao-tecnica.html"><code>validacao-tecnica.md</code></a> para as perguntas
+que definem várias dessas decisões.</p>
+<h2 id="1-github-plataforma">1. GitHub (plataforma)</h2>
+<ul>
+<li>Org/instância definida: GitHub Enterprise Cloud ou Server — muda tudo
+  abaixo.</li>
+<li>Permissão para criar o repositório real.</li>
+<li>GitHub Actions habilitado na org, com decisão sobre actions de
+  terceiros: <code>actions/checkout</code>, <code>actions/setup-python</code>,
+  <code>actions/setup-java</code>, <code>gitleaks/gitleaks-action</code>,
+  <code>actions/upload-artifact</code> — permitidos direto do marketplace, ou
+  precisam de allowlist/mirror interno?</li>
+<li>Permissão de admin no repositório para criar GitHub Environments com
+  protection rules (reviewers, branch policy) — nesta POC isso ficou
+  pendente por falta desse nível de permissão.</li>
+<li>CODEOWNERS definido com usuários/grupos reais.</li>
+</ul>
+<h2 id="2-runner-self-hosted-dentro-da-rede-do-banco">2. Runner self-hosted (dentro da rede do banco)</h2>
+<ul>
+<li>Uma VM/servidor dentro da rede que alcança o mainframe (a VM usada
+  nesta POC é Azure fora da rede do banco — só prova o conceito, não
+  substitui isso).</li>
+<li>Especificação mínima replicada: Linux, Python 3.12+, git, JDK 17 +
+  Maven (para o ProLeap), acesso root/sudo para instalar o runner como
+  serviço.</li>
+<li>Squad de infra definida como dona dessa VM (patch, hardening,
+  monitoramento).</li>
+<li>Token de registro do runner (gerado por um admin do repositório em
+  Settings → Actions → Runners).</li>
+<li>Regra de firewall: outbound HTTPS liberado dessa VM para
+  <code>github.com</code>/GHE Server (o runner só faz polling, não precisa de
+  inbound).</li>
+</ul>
+<h2 id="3-conectividade-com-o-mainframe">3. Conectividade com o mainframe</h2>
+<ul>
+<li>Caminho de rede da VM do runner até o z/OSMF (porta HTTPS, normalmente
+  443) ou até onde a Zowe CLI/SDK/RSE API residem.</li>
+<li>Confirmação de qual dessas três interfaces está de fato disponível e
+  homologada.</li>
+<li>Um ambiente z/OS não-produtivo (LPAR de teste) para validar o
+  <code>ZosmfAdapter</code> real antes de tocar TU/TI/PRD de verdade.</li>
+<li>Conta de serviço no mainframe com permissão de submeter job (JES) e
+  ler spool — e definição de quem provisiona/rotaciona essa credencial.</li>
+</ul>
+<h2 id="4-insumos-reais-para-o-rules-engine-fase-2-mas-para-preparar-ja">4. Insumos reais para o Rules Engine (Fase 2, mas para preparar já)</h2>
+<ul>
+<li>10 JCLs reais + 5 que falharam (pedido já formal no kickoff).</li>
+<li>Catálogo de regras do HexaVision/Dresscode: quais são bloqueantes vs.
+  warning.</li>
+<li>Padrão real de nomenclatura de dataset (hoje usamos
+  <code>ESTM.&lt;APP&gt;.&lt;ENV&gt;.&lt;RESOURCE&gt;</code> fictício).</li>
+<li>Lista de PROCs/copybooks compartilhados que essas JCLs referenciam.</li>
+</ul>
+<h2 id="5-governanca-e-aprovacao">5. Governança e aprovação</h2>
+<ul>
+<li>Nomes/papéis reais dos required reviewers de TI e de PRD (hoje é só o
+  dono do repositório).</li>
+<li>Decisão: a aprovação no GitHub Environment substitui a GMUD, ou
+  precisa integrar com a ferramenta de Change (ServiceNow etc.)?</li>
+</ul>
+<h2 id="6-seguranca">6. Segurança</h2>
+<ul>
+<li>Decisão sobre stack: Gitleaks + ProLeap + Rules Engine Python (grátis,
+  testados nesta POC fora do ambiente do banco — ainda não avaliados
+  pela política de segurança real) são suficientes, ou o banco exige
+  SonarQube Enterprise/Veracode/Checkmarx por política?</li>
+<li>Cofre de segredos real para as credenciais do mainframe (GitHub
+  Secrets é aceitável, ou precisa CyberArk/Azure Key Vault já em uso no
+  banco?).</li>
+</ul>
+<h2 id="7-ambiente-pythonjava">7. Ambiente Python/Java</h2>
+<ul>
+<li>Versão de Python homologada pelo banco.</li>
+<li>PyPI liberado, ou precisa de mirror interno (Artifactory/Nexus) — sem
+  isso <code>pip install -e ".[dev]"</code> não funciona na rede do banco.</li>
+<li>Mesma pergunta para o Maven: o <code>proleap-cobol-parser</code> não está no
+  Maven Central e é compilado da fonte
+  (<code>scripts/install_proleap.sh</code> clona do GitHub) — isso precisa de
+  outbound liberado para GitHub e Maven Central, ou de um artefato
+  pré-compilado hospedado internamente.</li>
+</ul>
+<h2 id="8-componentes-hexadecimaisbinarios">8. Componentes hexadecimais/binários</h2>
+<ul>
+<li>Levantamento (busca hexadecimal nas bibliotecas reais do escopo) de quais
+  JCLs/PROCs/copybooks já têm caracteres declarados em hexadecimal via
+  ISPF/3270 (<code>HEX ON</code>) — o mesmo achado que a Ana (esteira Endevor)
+  reportou na instância CWB. Nenhum componente real conhecido tem isso hoje;
+  a varredura é preventiva. Ver
+  <a href="reuniao-endevor-jcl-binarios.html"><code>reuniao-endevor-jcl-binarios.md</code></a>.</li>
+<li><del>Decisão sobre ferramental de deploy</del> <strong>Fechado:</strong> Zowe/z/OSMF + Python
+  direto, sem DBB/Wazi Deploy (decisão de 31/08/2026, seção 5 do documento
+  acima).</li>
+<li><del>JFrog Artifactory vs. GitHub Artifacts/Releases</del> <strong>Fechado:</strong> GitHub
+  Artifacts/Releases, a princípio.</li>
+</ul>
+<h2 id="9-dados-de-exemplo-lgpd">9. Dados de exemplo (LGPD)</h2>
+<ul>
+<li>Se os JCLs/COBOL reais cedidos para a POC tocarem dados de cliente,
+  precisam vir sanitizados/mascarados antes de entrar neste repositório
+  — confirmar isso explicitamente com quem for ceder os exemplos.</li>
+</ul>
+</main>
+</body>
+</html>

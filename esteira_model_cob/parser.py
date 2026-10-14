@@ -15,7 +15,10 @@ from pathlib import Path
 _JOB_RE = re.compile(r"^//(?P<name>\S+)\s+JOB\b(?P<params>.*)$")
 _EXEC_RE = re.compile(r"^//(?P<step>\S+)\s+EXEC\s+(?P<params>.*)$")
 _DD_RE = re.compile(r"^//(?P<dd>\S+)\s+DD\s+(?P<params>.*)$")
-_PARAM_RE_TEMPLATE = r"{key}=(\([^)]*\)|[^,\s]+)"
+# (?<![A-Z0-9]) evita casar "CLASS=" dentro de "MSGCLASS=" quando so o
+# segundo esta presente - achado testando contra JCL real (job card so com
+# MSGCLASS=, sem CLASS=).
+_PARAM_RE_TEMPLATE = r"(?<![A-Z0-9]){key}=(\([^)]*\)|[^,\s]+)"
 
 
 @dataclass
@@ -72,7 +75,14 @@ def _extract_param(params: str, key: str) -> str | None:
     match = re.search(_PARAM_RE_TEMPLATE.format(key=key), params)
     if not match:
         return None
-    return match.group(1).strip("()").strip("'\"")
+    value = match.group(1)
+    # So remove os parenteses quando eles envolvem o valor inteiro
+    # (DISP=(NEW,CATLG,DELETE) -> NEW,CATLG,DELETE). Um .strip("()") cego
+    # corrompe DSNs com geracao relativa de GDG (DSN.NOME(0), DSN.NOME(+1)) -
+    # achado testando contra JCL real.
+    if value.startswith("(") and value.endswith(")"):
+        value = value[1:-1]
+    return value.strip("'\"")
 
 
 def parse_jcl(text: str, source_path: str | None = None) -> JclJob:

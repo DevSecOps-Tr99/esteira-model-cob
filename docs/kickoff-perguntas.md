@@ -45,6 +45,19 @@ regras do HexaVision/Dresscode e um exemplo de JCL aprovado vs. um
 rejeitado, com o motivo da rejeição — base para engenharia reversa das
 regras da Fase 2.
 
+**Recebido em 31/08/2026 (primeira amostra, não versionada em `jcl/real/`,
+ver `.gitignore`):** 2 jobs reais × TU/TI/PRD (6 arquivos). Já deu para
+extrair um achado de arquitetura real (mesmo job, só um parâmetro varia
+por ambiente — ver `docs/jcl-parametros-por-ambiente.md`) e corrigir 2
+bugs de parser que os JCLs sintéticos não expunham. Ainda faltam: JCLs
+rejeitados (nenhum dos 2 recebidos falha em nada), as regras reais do
+HexaVision/Dresscode, e mais volume/variedade para validar o Rules Engine
+contra padrões de nomenclatura reais (os 2 jobs recebidos usam qualifiers
+de 5 níveis com geração relativa de GDG, bem diferente do
+`ESTM.<APP>.<ENV>.<RESOURCE>` fictício de 4 níveis usado nesta POC — e o
+**ambiente não fica codificado no nome do dataset**: o mesmo DSN aparece
+nos 3 arquivos TU/TI/PRD, só a biblioteca-alvo do deploy muda).
+
 ## Matriz de funções
 
 | Função atual | Jira | HexaVision | Nova solução | Fase |

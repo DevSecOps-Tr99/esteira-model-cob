@@ -12,6 +12,7 @@ dá para testar hoje, sem procurement, do que depende de aprovação de compra.
 | SonarQube Enterprise | Analisador dedicado SonarCOBOL, quality gate nativo no PR. **A Community Edition não suporta COBOL** | Trial 14 dias mediante contato comercial | Só por trial |
 | Veracode Static Analysis | SAST COBOL "enterprise-grade" | Comercial | Só por trial |
 | IBM ZCodeScan | Nativo do IBM Z Open Editor — 30 regras de code review COBOL + 5 de segurança (SQL injection, buffer overflow, credenciais), CLI com quality gate por baseline | Pago · parte do IBM Developer for z/OS Enterprise Edition | Só com licença |
+| **`binary_guard.py`** (interno) | Varre bytes EBCDIC crus em busca de caracteres de controle hard-coded (componentes que só podem trafegar como binário) — achado da esteira Endevor real do banco, ver `docs/reuniao-endevor-jcl-binarios.md` | Grátis · interno | Sim, comando `binary-guard` |
 
 ## Decisão para a POC
 

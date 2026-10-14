@@ -41,7 +41,7 @@ blockquote { border-left: 3px solid var(--accent); margin: 0; padding: 4px 16px;
 </style>
 </head>
 <body>
-<nav><h1>esteira-model-cob</h1><a href="index.html" class="active">esteira-model-cob</a><a href="como-rodar-manualmente.html" class="">Como rodar manualmente</a><a href="arquitetura.html" class="">Arquitetura</a><a href="gates.html" class="">Os 3 gates</a><a href="seguranca.html" class="">Seguranca</a><a href="integracao-zos.html" class="">Integracao z/OS</a><a href="gitflow.html" class="">Gitflow</a><a href="ambiente-validacao.html" class="">Ambiente de validacao (VM)</a><a href="poc-demo.html" class="">Roteiro de demo</a><a href="kickoff-perguntas.html" class="">Perguntas de kickoff</a></nav>
+<nav><h1>esteira-model-cob</h1><a href="index.html" class="active">esteira-model-cob</a><a href="como-rodar-manualmente.html" class="">Como rodar manualmente</a><a href="arquitetura.html" class="">Arquitetura</a><a href="gates.html" class="">Os 3 gates</a><a href="seguranca.html" class="">Seguranca</a><a href="integracao-zos.html" class="">Integracao z/OS</a><a href="gitflow.html" class="">Gitflow</a><a href="ambiente-validacao.html" class="">Ambiente de validacao (VM)</a><a href="poc-demo.html" class="">Roteiro de demo</a><a href="kickoff-perguntas.html" class="">Perguntas de kickoff</a><a href="validacao-tecnica.html" class="">Validacao tecnica</a><a href="pre-requisitos-ambiente-real.html" class="">Pre-requisitos ambiente real</a><a href="reuniao-endevor-jcl-binarios.html" class="">Reuniao Endevor - binarios</a><a href="jcl-parametros-por-ambiente.html" class="">JCL - parametros por ambiente</a></nav>
 <main>
 <h1 id="esteira-model-cob">esteira-model-cob</h1>
 <p>POC de uma esteira de CI/CD para JCL/COBOL usando <strong>VS Code + GitHub + GitHub Actions + um motor de esteira em Python</strong>, no lugar da orquestração hoje baseada em Jira + HexaVision + ChangeMan ZMF.</p>
@@ -56,8 +56,18 @@ python -m esteira_model_cob validate jcl/
 # simula a submissão de um job aprovado no MockZosAdapter
 python -m esteira_model_cob simulate jcl/poc001_sucesso.jcl
 
-# gera o JCL Pipeline Report em reports/
-python -m esteira_model_cob report jcl/poc001_sucesso.jcl
+# gera o JCL Pipeline Report em reports/ (--env TU|TI|PRD resolve a biblioteca-alvo)
+python -m esteira_model_cob report jcl/poc001_sucesso.jcl --env TU
+
+# JCL com parametro por ambiente (${VAR} + config/jcl_env_params.yml,
+# equivalente ao appsettings.{Environment}.json do .NET - ver
+# docs/jcl-parametros-por-ambiente.md): so o SPACE muda entre TU/TI e PRD
+python -m esteira_model_cob validate jcl/poc005_por_ambiente.jcl --env PRD
+
+# guarda de binario: bytes EBCDIC crus com caracteres de controle hard-coded
+# (achado da esteira Endevor real - ver docs/reuniao-endevor-jcl-binarios.md)
+python scripts/gen_test_fixtures.py
+python -m esteira_model_cob binary-guard tests/fixtures/
 
 # proleap-cobol-parser nao esta no Maven Central - compila da fonte uma vez
 bash scripts/install_proleap.sh
@@ -118,6 +128,10 @@ python -m esteira_model_cob cobol-ast cobol/payroll_sample.cbl
 <li><a href="docs/ambiente-validacao.md"><code>docs/ambiente-validacao.md</code></a> — VM de validação para rodar a esteira completa (incl. ProLeap) fora do GitHub Actions</li>
 <li><a href="docs/poc-demo.md"><code>docs/poc-demo.md</code></a> — roteiro de demonstração ponta a ponta</li>
 <li><a href="docs/kickoff-perguntas.md"><code>docs/kickoff-perguntas.md</code></a> — perguntas em aberto e matriz de funções</li>
+<li><a href="docs/validacao-tecnica.md"><code>docs/validacao-tecnica.md</code></a> — perguntas para validar as escolhas técnicas contra o ambiente real</li>
+<li><a href="docs/pre-requisitos-ambiente-real.md"><code>docs/pre-requisitos-ambiente-real.md</code></a> — o que precisa ser provisionado para portar a POC para o ambiente do banco</li>
+<li><a href="docs/reuniao-endevor-jcl-binarios.md"><code>docs/reuniao-endevor-jcl-binarios.md</code></a> — paralelo com a esteira Endevor real e o risco de componentes hexadecimais/binários (reunião com a Ana)</li>
+<li><a href="docs/jcl-parametros-por-ambiente.md"><code>docs/jcl-parametros-por-ambiente.md</code></a> — template + config por ambiente (<code>--env</code>), achado e 2 bugs de parser corrigidos testando contra JCL real</li>
 </ul>
 </main>
 </body>

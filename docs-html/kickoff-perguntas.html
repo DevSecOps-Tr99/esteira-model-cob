@@ -41,7 +41,7 @@ blockquote { border-left: 3px solid var(--accent); margin: 0; padding: 4px 16px;
 </style>
 </head>
 <body>
-<nav><h1>esteira-model-cob</h1><a href="index.html" class="">esteira-model-cob</a><a href="como-rodar-manualmente.html" class="">Como rodar manualmente</a><a href="arquitetura.html" class="">Arquitetura</a><a href="gates.html" class="">Os 3 gates</a><a href="seguranca.html" class="">Seguranca</a><a href="integracao-zos.html" class="">Integracao z/OS</a><a href="gitflow.html" class="">Gitflow</a><a href="ambiente-validacao.html" class="">Ambiente de validacao (VM)</a><a href="poc-demo.html" class="">Roteiro de demo</a><a href="kickoff-perguntas.html" class="active">Perguntas de kickoff</a></nav>
+<nav><h1>esteira-model-cob</h1><a href="index.html" class="">esteira-model-cob</a><a href="como-rodar-manualmente.html" class="">Como rodar manualmente</a><a href="arquitetura.html" class="">Arquitetura</a><a href="gates.html" class="">Os 3 gates</a><a href="seguranca.html" class="">Seguranca</a><a href="integracao-zos.html" class="">Integracao z/OS</a><a href="gitflow.html" class="">Gitflow</a><a href="ambiente-validacao.html" class="">Ambiente de validacao (VM)</a><a href="poc-demo.html" class="">Roteiro de demo</a><a href="kickoff-perguntas.html" class="active">Perguntas de kickoff</a><a href="validacao-tecnica.html" class="">Validacao tecnica</a><a href="pre-requisitos-ambiente-real.html" class="">Pre-requisitos ambiente real</a><a href="reuniao-endevor-jcl-binarios.html" class="">Reuniao Endevor - binarios</a><a href="jcl-parametros-por-ambiente.html" class="">JCL - parametros por ambiente</a></nav>
 <main>
 <h1 id="perguntas-para-o-kickoff-e-matriz-de-funcoes">Perguntas para o kickoff e matriz de funções</h1>
 <p>Antes de desligar qualquer parte do fluxo atual, estas frentes precisam de
@@ -87,6 +87,18 @@ mapear antes todos os controles que eles executam.</p>
 regras do HexaVision/Dresscode e um exemplo de JCL aprovado vs. um
 rejeitado, com o motivo da rejeição — base para engenharia reversa das
 regras da Fase 2.</p>
+<p><strong>Recebido em 31/08/2026 (primeira amostra, não versionada em <code>jcl/real/</code>,
+ver <code>.gitignore</code>):</strong> 2 jobs reais × TU/TI/PRD (6 arquivos). Já deu para
+extrair um achado de arquitetura real (mesmo job, só um parâmetro varia
+por ambiente — ver <code>docs/jcl-parametros-por-ambiente.md</code>) e corrigir 2
+bugs de parser que os JCLs sintéticos não expunham. Ainda faltam: JCLs
+rejeitados (nenhum dos 2 recebidos falha em nada), as regras reais do
+HexaVision/Dresscode, e mais volume/variedade para validar o Rules Engine
+contra padrões de nomenclatura reais (os 2 jobs recebidos usam qualifiers
+de 5 níveis com geração relativa de GDG, bem diferente do
+<code>ESTM.&lt;APP&gt;.&lt;ENV&gt;.&lt;RESOURCE&gt;</code> fictício de 4 níveis usado nesta POC — e o
+<strong>ambiente não fica codificado no nome do dataset</strong>: o mesmo DSN aparece
+nos 3 arquivos TU/TI/PRD, só a biblioteca-alvo do deploy muda).</p>
 <h2 id="matriz-de-funcoes">Matriz de funções</h2>
 <table>
 <thead>

@@ -64,6 +64,17 @@ apenas a camada de disparo.
   classificação completa das regras (técnica, processo, segurança, negócio,
   regulatória) — ver `kickoff-perguntas.md`.
 
+## Gaps conhecidos vs. uma esteira real de migração do Endevor
+
+O mapeamento acima descreve a intenção arquitetural. Comparado a uma esteira
+real de migração do Endevor já em operação no banco (COBOL/Assembler/mapas/
+Control-M/JCL, ferramental DBB + Wazi Deploy + JFrog), faltam hoje: um
+estágio de build/empacotamento, a gravação do fonte na biblioteca-alvo
+(distinta da submissão do job) e o tratamento de componentes com caracteres
+hexadecimais não roundtrippable (que só podem trafegar como binário). Ver
+[`reuniao-endevor-jcl-binarios.md`](reuniao-endevor-jcl-binarios.md) para o
+paralelo completo, a lista de diferenças e o plano de ação.
+
 ## Ambiente de validação
 
 O GitHub Actions hospedado pela GitHub roda o `pytest` e o wrapper do

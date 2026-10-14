@@ -1,0 +1,31 @@
+# Classificacao de artefato -> biblioteca-alvo por ambiente.
+#
+# Equivalente simplificado (nosso escopo e so JCL) ao par
+# Transfer.yaml/info.toml da esteira Endevor real do banco (deployType ->
+# dataset por ambiente, copyMode text/binary por componente) - ver
+# docs/reuniao-endevor-jcl-binarios.md, secoes 1 e 4.
+#
+# copyMode aqui e o default estatico do tipo de componente. Um componente
+# especifico sinalizado pelo esteira_model_cob/binary_guard.py (bytes
+# EBCDIC de controle hard-coded) sempre usa binary, independente do valor
+# default - essa decisao e dinamica, nao vive neste arquivo.
+
+deploy_targets:
+  jcl:
+    copyMode: text
+    # Arquivo renderizado por ambiente: membro + sufixo do ambiente
+    # (ESTMX001TU.jcl, ESTMX001TI.jcl, ESTMX001PRD.jcl) - mesmo padrao das
+    # copias por ambiente dos JCLs reais. No destino, o conteudo vira o
+    # membro (sem sufixo) da biblioteca do ambiente.
+    file_naming: "{member}{env}.jcl"
+    library:
+      TU: "ESTM.POC.TU.JCLLIB"
+      TI: "ESTM.POC.TI.JCLLIB"
+      PRD: "ESTM.POC.PRD.JCLLIB"
+
+  proc:
+    copyMode: text
+    library:
+      TU: "ESTM.POC.TU.PROCLIB"
+      TI: "ESTM.POC.TI.PROCLIB"
+      PRD: "ESTM.POC.PRD.PROCLIB"

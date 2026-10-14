@@ -41,7 +41,7 @@ blockquote { border-left: 3px solid var(--accent); margin: 0; padding: 4px 16px;
 </style>
 </head>
 <body>
-<nav><h1>esteira-model-cob</h1><a href="index.html" class="">esteira-model-cob</a><a href="como-rodar-manualmente.html" class="">Como rodar manualmente</a><a href="arquitetura.html" class="">Arquitetura</a><a href="gates.html" class="">Os 3 gates</a><a href="seguranca.html" class="active">Seguranca</a><a href="integracao-zos.html" class="">Integracao z/OS</a><a href="gitflow.html" class="">Gitflow</a><a href="ambiente-validacao.html" class="">Ambiente de validacao (VM)</a><a href="poc-demo.html" class="">Roteiro de demo</a><a href="kickoff-perguntas.html" class="">Perguntas de kickoff</a></nav>
+<nav><h1>esteira-model-cob</h1><a href="index.html" class="">esteira-model-cob</a><a href="como-rodar-manualmente.html" class="">Como rodar manualmente</a><a href="arquitetura.html" class="">Arquitetura</a><a href="gates.html" class="">Os 3 gates</a><a href="seguranca.html" class="active">Seguranca</a><a href="integracao-zos.html" class="">Integracao z/OS</a><a href="gitflow.html" class="">Gitflow</a><a href="ambiente-validacao.html" class="">Ambiente de validacao (VM)</a><a href="poc-demo.html" class="">Roteiro de demo</a><a href="kickoff-perguntas.html" class="">Perguntas de kickoff</a><a href="validacao-tecnica.html" class="">Validacao tecnica</a><a href="pre-requisitos-ambiente-real.html" class="">Pre-requisitos ambiente real</a><a href="reuniao-endevor-jcl-binarios.html" class="">Reuniao Endevor - binarios</a><a href="jcl-parametros-por-ambiente.html" class="">JCL - parametros por ambiente</a></nav>
 <main>
 <h1 id="seguranca-qualidade">Segurança &amp; qualidade</h1>
 <p>Nenhuma ferramenta comercial de nível "SonarQube para COBOL" é gratuita —
@@ -92,6 +92,12 @@ dá para testar hoje, sem procurement, do que depende de aprovação de compra.<
 <td>Nativo do IBM Z Open Editor — 30 regras de code review COBOL + 5 de segurança (SQL injection, buffer overflow, credenciais), CLI com quality gate por baseline</td>
 <td>Pago · parte do IBM Developer for z/OS Enterprise Edition</td>
 <td>Só com licença</td>
+</tr>
+<tr>
+<td><strong><code>binary_guard.py</code></strong> (interno)</td>
+<td>Varre bytes EBCDIC crus em busca de caracteres de controle hard-coded (componentes que só podem trafegar como binário) — achado da esteira Endevor real do banco, ver <code>docs/reuniao-endevor-jcl-binarios.md</code></td>
+<td>Grátis · interno</td>
+<td>Sim, comando <code>binary-guard</code></td>
 </tr>
 </tbody>
 </table>

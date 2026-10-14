@@ -1,0 +1,179 @@
+name: JCL Pipeline (reutilizavel)
+
+# Workflow reutilizavel da esteira. O repositorio de JCL (caller) so
+# declara os gatilhos e chama este arquivo com `secrets: inherit` - mesmo
+# modelo dos callers finos da esteira corporativa. Ver
+# docs/esteira-poc-como-funciona.md.
+#
+# O contexto (github.*, vars, Environments, runner) e o do caller: as
+# variables JCL_*, G_DEPLOYMENT_TARGET_*, o secret SPN_KV_DEV_SECRET e o
+# runner estm-runner ficam no repositorio de JCL.
+
+on:
+  workflow_call:
+    inputs:
+      ambiente:
+        description: "TU, TI ou PRD. Vazio: mapeamento branch -> ambiente (Gitflow)."
+        type: string
+        default: ""
+      jcl:
+        description: "Arquivo .jcl ou pasta, relativo ao repositorio de JCL"
+        type: string
+        default: jcl/
+      esteira-ref:
+        description: "Versao do motor (branch ou tag de DevSecOps-Tr99/esteira-model-cob)"
+        type: string
+        default: main
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      ESTM_JCL_ENV_PARAMS: ${{ github.workspace }}/config/jcl_env_params.yml
+
+    steps:
+      # fetch-depth 0: o gitleaks varre o historico do push/PR inteiro.
+      - name: Checkout do repositorio de JCL
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout do motor da esteira
+        uses: actions/checkout@v4
+        with:
+          repository: DevSecOps-Tr99/esteira-model-cob
+          ref: ${{ inputs.esteira-ref }}
+          path: .esteira
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Editavel: as regras de governanca (config/rules.yml, datasets.yml,
+      # deploy_targets.yml) sao lidas do checkout do motor.
+      - name: Instalar a esteira
+        run: pip install -q -e ./.esteira
+
+      - name: Gitleaks - scan de segredos
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Quality/Security Gate (TU, TI e PRD)
+        run: |
+          for env in TU TI PRD; do
+            echo "::group::$env"
+            python -m esteira_model_cob validate "${{ inputs.jcl }}" --env "$env"
+            echo "::endgroup::"
+          done
+
+      - name: JCL Pipeline Report
+        if: always()
+        run: |
+          shopt -s nullglob
+          target="${{ inputs.jcl }}"
+          files=("$target")
+          [ -d "$target" ] && files=("$target"/*.jcl)
+          for jcl in "${files[@]}"; do
+            python -m esteira_model_cob report "$jcl"
+          done
+
+      - name: Upload dos relatorios
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jcl-pipeline-reports
+          path: reports/
+          if-no-files-found: ignore
+
+  deploy:
+    needs: validate
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: [self-hosted, linux, x64, estm-runner]
+    environment: >-
+      ${{
+        inputs.ambiente
+        || github.ref_name == 'main' && 'PRD'
+        || startsWith(github.ref_name, 'release/') && 'TI'
+        || startsWith(github.ref_name, 'hotfix/') && 'PRD'
+        || 'TU'
+      }}
+    env:
+      ESTM_ENV: >-
+        ${{
+          inputs.ambiente
+          || github.ref_name == 'main' && 'PRD'
+          || startsWith(github.ref_name, 'release/') && 'TI'
+          || startsWith(github.ref_name, 'hotfix/') && 'PRD'
+          || 'TU'
+        }}
+      ESTM_JCL_ENV_PARAMS: ${{ github.workspace }}/config/jcl_env_params.yml
+      # So as variables JCL_* viram parametro de JCL (templating.py).
+      ESTM_GITHUB_VARS: ${{ toJSON(vars) }}
+
+    steps:
+      - name: Checkout do repositorio de JCL
+        uses: actions/checkout@v4
+
+      - name: Checkout do motor da esteira
+        uses: actions/checkout@v4
+        with:
+          repository: DevSecOps-Tr99/esteira-model-cob
+          ref: ${{ inputs.esteira-ref }}
+          path: .esteira
+
+      # Ubuntu 24.04 marca o Python do sistema como "externally managed"
+      # (PEP 668) - uma venv dedicada para o resto do job.
+      - name: Preparar ambiente Python (venv)
+        run: |
+          python3 -m venv "$HOME/.venvs/esteira-model-cob"
+          echo "$HOME/.venvs/esteira-model-cob/bin" >> "$GITHUB_PATH"
+
+      - name: Instalar a esteira
+        run: pip install -q -e ./.esteira
+
+      - name: Renderizar JCL para ${{ env.ESTM_ENV }}
+        id: render
+        run: python -m esteira_model_cob render "${{ inputs.jcl }}" --env "$ESTM_ENV" --out build
+
+      - name: Quality/Security Gate no JCL final
+        run: python -m esteira_model_cob validate ${{ steps.render.outputs.arquivos }} --env "$ESTM_ENV"
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.SPN_KV_DEV_SECRET }}
+          allow-no-subscriptions: true
+
+      - name: Key Vault - credenciais de ${{ env.ESTM_ENV }}
+        run: >-
+          python -m esteira_model_cob kv-fetch
+          --vault "${{ vars.GH_KV_DEV }}"
+          --secret "ssh-key=${{ vars[format('G_DEPLOYMENT_TARGET_LINUX_{0}_KEY', env.ESTM_ENV)] }}"
+          --secret "token=${{ vars[format('G_DEPLOYMENT_TARGET_LINUX_{0}_TOKEN', env.ESTM_ENV)] }}"
+          --out "$RUNNER_TEMP/estm-cred"
+
+      - name: SSH - publicar e submeter em ${{ env.ESTM_ENV }}
+        env:
+          ESTM_KNOWN_HOSTS: ${{ vars.G_DEPLOYMENT_TARGET_LINUX_KNOWN_HOSTS }}
+        run: >-
+          python -m esteira_model_cob deploy ${{ steps.render.outputs.arquivos }}
+          --env "$ESTM_ENV"
+          --host "${{ vars[format('DEPLOY_SERVERS_{0}', env.ESTM_ENV)] }}"
+          --user "${{ vars[format('G_DEPLOYMENT_TARGET_LINUX_{0}_USER', env.ESTM_ENV)] }}"
+          --remote-dir "${{ vars[format('G_DEPLOYMENT_TARGET_{0}_PATH', env.ESTM_ENV)] }}"
+          --known-hosts "$ESTM_KNOWN_HOSTS"
+          --cred-dir "$RUNNER_TEMP/estm-cred"
+
+      - name: Upload do JCL publicado
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jcl-publicado-${{ env.ESTM_ENV }}
+          path: build/
+          if-no-files-found: ignore
+
+      # Runner self-hosted e persistente: nada de credencial fica no disco.
+      - name: Limpar credenciais
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/estm-cred" && az logout || true

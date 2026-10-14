@@ -17,8 +17,18 @@ python -m esteira_model_cob validate jcl/
 # simula a submissão de um job aprovado no MockZosAdapter
 python -m esteira_model_cob simulate jcl/poc001_sucesso.jcl
 
-# gera o JCL Pipeline Report em reports/
-python -m esteira_model_cob report jcl/poc001_sucesso.jcl
+# gera o JCL Pipeline Report em reports/ (--env TU|TI|PRD resolve a biblioteca-alvo)
+python -m esteira_model_cob report jcl/poc001_sucesso.jcl --env TU
+
+# JCL com parametro por ambiente (${VAR} + config/jcl_env_params.yml,
+# equivalente ao appsettings.{Environment}.json do .NET - ver
+# docs/jcl-parametros-por-ambiente.md): so o SPACE muda entre TU/TI e PRD
+python -m esteira_model_cob validate jcl/poc005_por_ambiente.jcl --env PRD
+
+# guarda de binario: bytes EBCDIC crus com caracteres de controle hard-coded
+# (achado da esteira Endevor real - ver docs/reuniao-endevor-jcl-binarios.md)
+python scripts/gen_test_fixtures.py
+python -m esteira_model_cob binary-guard tests/fixtures/
 
 # proleap-cobol-parser nao esta no Maven Central - compila da fonte uma vez
 bash scripts/install_proleap.sh
@@ -49,6 +59,9 @@ O teste `tests/test_proleap_client.py` é pulado automaticamente se `java`/`mvn`
 
 ## Documentação
 
+- [`docs/esteira-poc-como-funciona.md`](docs/esteira-poc-como-funciona.md) — **como a esteira da POC funciona**: diagrama de arquitetura (Excalidraw), componentes, fluxo, segurança e operação
+- [`esteira-model-cob-jcl`](https://github.com/DevSecOps-Tr99/esteira-model-cob-jcl) — repositório de JCL que consome o workflow reutilizável `jcl-pipeline.yml` deste repositório
+- [`esteira-model-cob-infra`](https://github.com/DevSecOps-Tr99/esteira-model-cob-infra) — infra na Azure (Key Vault, VMs, runner) e provisionamento
 - [`docs/arquitetura.md`](docs/arquitetura.md) — visão geral e mapeamento esteira atual → nova esteira
 - [`docs/gates.md`](docs/gates.md) — os 3 gates e o JCL Governance Report
 - [`docs/seguranca.md`](docs/seguranca.md) — ferramentas de segurança avaliadas (ProLeap, Gitleaks, CodeQL, SonarQube, Veracode, IBM ZCodeScan)
@@ -57,3 +70,7 @@ O teste `tests/test_proleap_client.py` é pulado automaticamente se `java`/`mvn`
 - [`docs/ambiente-validacao.md`](docs/ambiente-validacao.md) — VM de validação para rodar a esteira completa (incl. ProLeap) fora do GitHub Actions
 - [`docs/poc-demo.md`](docs/poc-demo.md) — roteiro de demonstração ponta a ponta
 - [`docs/kickoff-perguntas.md`](docs/kickoff-perguntas.md) — perguntas em aberto e matriz de funções
+- [`docs/validacao-tecnica.md`](docs/validacao-tecnica.md) — perguntas para validar as escolhas técnicas contra o ambiente real
+- [`docs/pre-requisitos-ambiente-real.md`](docs/pre-requisitos-ambiente-real.md) — o que precisa ser provisionado para portar a POC para o ambiente do banco
+- [`docs/reuniao-endevor-jcl-binarios.md`](docs/reuniao-endevor-jcl-binarios.md) — paralelo com a esteira Endevor real e o risco de componentes hexadecimais/binários (reunião com a Ana)
+- [`docs/jcl-parametros-por-ambiente.md`](docs/jcl-parametros-por-ambiente.md) — template + config por ambiente (`--env`), achado e 2 bugs de parser corrigidos testando contra JCL real

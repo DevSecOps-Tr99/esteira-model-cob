@@ -1,0 +1,19 @@
+# Por padrao, tudo neste repositorio e texto (JCL/PROC/COBOL/Python/YAML/MD
+# versionados como ASCII/UTF-8 - nunca passaram por um dataset EBCDIC
+# real). Ver docs/reuniao-endevor-jcl-binarios.md para o porque isso
+# importa: componentes reais do mainframe podem ter caracteres
+# hexadecimais hard-coded (HEX ON no ISPF/3270) que so podem trafegar como
+# binario - qualquer normalizacao de fim de linha ou conversao de texto
+# corrompe esses bytes de forma irreversivel.
+* text=auto eol=lf
+
+# Fixtures geradas por scripts/gen_test_fixtures.py: bytes EBCDIC (cp037)
+# genuinos, usados por tests/test_binary_guard.py. Nunca devem passar por
+# normalizacao de fim de linha nem ser tratadas como diff de texto.
+tests/fixtures/*.bin -text -diff
+
+# Quando um componente REAL (JCL/COPY/PROC) for sinalizado pelo
+# esteira_model_cob/binary_guard.py como "requires_binary_transfer",
+# marque-o aqui individualmente, por exemplo:
+#
+#   jcl/nome-do-componente-real.jcl -text -diff

@@ -41,7 +41,7 @@ blockquote { border-left: 3px solid var(--accent); margin: 0; padding: 4px 16px;
 </style>
 </head>
 <body>
-<nav><h1>esteira-model-cob</h1><a href="index.html" class="">esteira-model-cob</a><a href="como-rodar-manualmente.html" class="">Como rodar manualmente</a><a href="arquitetura.html" class="">Arquitetura</a><a href="gates.html" class="">Os 3 gates</a><a href="seguranca.html" class="">Seguranca</a><a href="integracao-zos.html" class="active">Integracao z/OS</a><a href="gitflow.html" class="">Gitflow</a><a href="ambiente-validacao.html" class="">Ambiente de validacao (VM)</a><a href="poc-demo.html" class="">Roteiro de demo</a><a href="kickoff-perguntas.html" class="">Perguntas de kickoff</a></nav>
+<nav><h1>esteira-model-cob</h1><a href="index.html" class="">esteira-model-cob</a><a href="como-rodar-manualmente.html" class="">Como rodar manualmente</a><a href="arquitetura.html" class="">Arquitetura</a><a href="gates.html" class="">Os 3 gates</a><a href="seguranca.html" class="">Seguranca</a><a href="integracao-zos.html" class="active">Integracao z/OS</a><a href="gitflow.html" class="">Gitflow</a><a href="ambiente-validacao.html" class="">Ambiente de validacao (VM)</a><a href="poc-demo.html" class="">Roteiro de demo</a><a href="kickoff-perguntas.html" class="">Perguntas de kickoff</a><a href="validacao-tecnica.html" class="">Validacao tecnica</a><a href="pre-requisitos-ambiente-real.html" class="">Pre-requisitos ambiente real</a><a href="reuniao-endevor-jcl-binarios.html" class="">Reuniao Endevor - binarios</a><a href="jcl-parametros-por-ambiente.html" class="">JCL - parametros por ambiente</a></nav>
 <main>
 <h1 id="integracao-com-zos">Integração com z/OS</h1>
 <p>A submissão e o acompanhamento de jobs em z/OS têm caminho oficial e
@@ -75,6 +75,11 @@ documentado pela IBM — não é necessário um protocolo proprietário.</p>
 <td>Parâmetro do JOB statement (JCL) que faz o JES converter/validar sintaxe sem executar os steps</td>
 <td>Gate de execução, sem gastar tempo de CPU do mainframe</td>
 </tr>
+<tr>
+<td><strong>z/OSMF Files REST API</strong> (<code>restfiles/ds</code>)</td>
+<td>API REST da IBM para gravar/ler membros de dataset — com modo <code>binary</code></td>
+<td>Camada de deploy do fonte (JCL/COPY/PROC) na biblioteca-alvo, separada da submissão de job (Fase 2)</td>
+</tr>
 </tbody>
 </table>
 <h2 id="sequencia-de-adapters">Sequência de adapters</h2>
@@ -98,6 +103,14 @@ result = simulate(job, quality, adapter)
 </code></pre>
 <p>Nenhuma outra parte da esteira (parser, rules engine, quality gate, report)
 precisa ser alterada.</p>
+<h2 id="gravacao-do-fonte-na-biblioteca-alvo-deploy-vs-submissao-do-job">Gravação do fonte na biblioteca-alvo (deploy) vs. submissão do job</h2>
+<p>A <code>Jobs REST API</code> acima cobre só a <strong>execução</strong>. Falta ainda desenhar a
+camada equivalente ao papel do Wazi Deploy na esteira Endevor real do
+banco: decidir a biblioteca-alvo por ambiente e <strong>gravar</strong> o JCL/COPY/PROC
+lá — usando a <code>Files REST API</code> (<code>restfiles/ds</code>) em modo <code>binary</code> quando o
+componente tiver caracteres hexadecimais não roundtrippable. Ver
+<a href="reuniao-endevor-jcl-binarios.html"><code>reuniao-endevor-jcl-binarios.md</code></a> para o
+paralelo completo e o plano de ação.</p>
 </main>
 </body>
 </html>
