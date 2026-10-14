@@ -74,7 +74,13 @@ alcance de rede interna.
 
 ## Status
 
-A VM `VM-COBOL-POC` está registrada como self-hosted runner
+> **Substituído pelo ambiente da POC na Azure** (`docs/esteira-poc-como-funciona.md`
+> e o repositório `esteira-model-cob-infra`). A VM `VM-COBOL-POC` foi
+> removida. O job `publish` deu lugar ao job `deploy` do workflow reutilizável
+> `jcl-pipeline.yml`, que lê as credenciais no Key Vault e publica por SSH em
+> um servidor de destino. O histórico abaixo fica só como referência.
+
+A VM `VM-COBOL-POC` estava registrada como self-hosted runner
 (`vm-cobol-poc`, labels `self-hosted,linux,x64,vm-cobol-poc`), rodando
 como serviço systemd (`actions.runner.DevSecOps-Tr99-esteira-model-cob.vm-cobol-poc.service`,
 sobrevive a reboot).

@@ -59,6 +59,9 @@ O teste `tests/test_proleap_client.py` é pulado automaticamente se `java`/`mvn`
 
 ## Documentação
 
+- [`docs/esteira-poc-como-funciona.md`](docs/esteira-poc-como-funciona.md) — **como a esteira da POC funciona**: diagrama de arquitetura (Excalidraw), componentes, fluxo, segurança e operação
+- [`esteira-model-cob-jcl`](https://github.com/DevSecOps-Tr99/esteira-model-cob-jcl) — repositório de JCL que consome o workflow reutilizável `jcl-pipeline.yml` deste repositório
+- [`esteira-model-cob-infra`](https://github.com/DevSecOps-Tr99/esteira-model-cob-infra) — infra na Azure (Key Vault, VMs, runner) e provisionamento
 - [`docs/arquitetura.md`](docs/arquitetura.md) — visão geral e mapeamento esteira atual → nova esteira
 - [`docs/gates.md`](docs/gates.md) — os 3 gates e o JCL Governance Report
 - [`docs/seguranca.md`](docs/seguranca.md) — ferramentas de segurança avaliadas (ProLeap, Gitleaks, CodeQL, SonarQube, Veracode, IBM ZCodeScan)

@@ -1,0 +1,9 @@
+# Falsos positivos do gitleaks (regra generic-api-key), revisados um a um.
+#
+# infra/main.bicep:58-59 - IDs dos papeis nativos do Azure "Key Vault Secrets
+#   User" e "Key Vault Secrets Officer". Sao publicos e iguais em todo tenant
+#   (https://learn.microsoft.com/azure/role-based-access-control/built-in-roles).
+# tests/test_keyvault.py:32 - versao ficticia de segredo usada so no teste.
+c89f417555ec7970a0919ae9e1436ac5b2bd1893:tests/test_keyvault.py:generic-api-key:32
+c89f417555ec7970a0919ae9e1436ac5b2bd1893:infra/main.bicep:generic-api-key:58
+c89f417555ec7970a0919ae9e1436ac5b2bd1893:infra/main.bicep:generic-api-key:59

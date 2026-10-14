@@ -2,9 +2,11 @@
 #
 # Padrao esperado: ESTM.<APP>.<ENV>.<RESOURCE>
 # "ESTM" e o qualifier de alto nivel reservado para a esteira-model-cob.
+# Aceita geracao relativa de GDG no final - DSN.NOME(0), DSN.NOME(+1) -,
+# comum nos JCLs reais.
 
 naming:
-  pattern: "^ESTM\\.[A-Z0-9]+\\.[A-Z0-9]+\\.[A-Z0-9]+$"
+  pattern: "^ESTM\\.[A-Z0-9]+\\.[A-Z0-9]+\\.[A-Z0-9]+(\\([+-]?[0-9]+\\))?$"
   example: "ESTM.POC.TU.TESTDATA"
 
 allowed_qualifiers:

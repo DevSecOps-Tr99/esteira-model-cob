@@ -10,6 +10,11 @@
 # no .jcl. Um job sem entrada aqui roda sem nenhuma substituicao (mesmo
 # comportamento de antes deste mecanismo existir).
 
+# Os JCLs publicados pela esteira (ex.: ESTMX001) e os parametros deles
+# ficam no repositorio de JCL (DevSecOps-Tr99/esteira-model-cob-jcl); o
+# workflow reutilizavel aponta ESTM_JCL_ENV_PARAMS para o yml de la. Este
+# arquivo serve so aos JCLs de demonstracao de jcl/.
+
 POC005:
   TU:
     SPACE_PRIMARY: "5"

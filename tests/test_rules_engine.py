@@ -16,6 +16,14 @@ def _evaluate(filename: str):
     return evaluate(job, _RULES, _NAMING)
 
 
+def test_naming_accepts_gdg_relative_generation():
+    assert _NAMING.match("ESTM.POC.TU.CLIENTES(0)")
+    assert _NAMING.match("ESTM.POC.TU.CLIENTES(+1)")
+    assert _NAMING.match("ESTM.POC.TU.CLIENTES(-1)")
+    assert not _NAMING.match("ESTM.POC.TU.CLIENTES(A)")
+    assert not _NAMING.match("POC.TEST.DATA(0)")
+
+
 def test_poc001_sucesso_has_no_findings():
     findings = _evaluate("poc001_sucesso.jcl")
     assert findings == []

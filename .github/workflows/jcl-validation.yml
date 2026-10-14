@@ -1,4 +1,8 @@
-name: JCL Pipeline
+name: CI da esteira
+
+# CI do proprio motor (testes, ProLeap, demonstracao com os JCLs de jcl/).
+# A publicacao de JCL roda no repositorio de JCL, pelo workflow
+# reutilizavel jcl-pipeline.yml.
 
 on:
   pull_request:
@@ -10,6 +14,7 @@ on:
       - "esteira_model_cob/**"
       - "tools/proleap-runner/**"
       - "tests/**"
+      - ".github/workflows/**"
   push:
     branches: [main, develop, "release/**", "hotfix/**"]
 
@@ -97,108 +102,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: jcl-pipeline-reports
-          path: reports/
-
-  # Roda na VM de validacao (self-hosted, ver docs/ambiente-validacao.md).
-  # So dispara em push (nao em PR) - promocao de ambiente acontece so
-  # depois do merge, seguindo o mapeamento branch -> ambiente do
-  # docs/gitflow.md e config/environments.yml.
-  publish:
-    needs: validate
-    if: github.event_name == 'push'
-    runs-on: [self-hosted, linux, x64]
-    environment: >-
-      ${{
-        github.ref_name == 'main' && 'PRD'
-        || startsWith(github.ref_name, 'release/') && 'TI'
-        || startsWith(github.ref_name, 'hotfix/') && 'PRD'
-        || 'TU'
-      }}
-    env:
-      ESTM_ENV: >-
-        ${{
-          github.ref_name == 'main' && 'PRD'
-          || startsWith(github.ref_name, 'release/') && 'TI'
-          || startsWith(github.ref_name, 'hotfix/') && 'PRD'
-          || 'TU'
-        }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      # Ubuntu 24.04 marca o Python do sistema como "externally managed"
-      # (PEP 668) e nao tem o comando "python" puro (so "python3") - uma
-      # venv dedicada evita as duas coisas para o resto do job.
-      - name: Preparar ambiente Python (venv)
-        run: |
-          python3 -m venv "$HOME/.venvs/esteira-model-cob"
-          echo "$HOME/.venvs/esteira-model-cob/bin" >> "$GITHUB_PATH"
-
-      - name: Instalar a esteira
-        run: pip install -e ".[dev]"
-
-      - name: Testes (pytest, com ProLeap real - java/mvn presentes na VM)
-        run: pytest -q
-
-      - name: Validar JCLs (Rules Engine + Quality Gate)
-        continue-on-error: true
-        run: python -m esteira_model_cob validate jcl/
-
-      # poc005 tem um placeholder ${SPACE_PRIMARY}/${SPACE_SECONDARY} -
-      # esteira_model_cob/templating.py + config/jcl_env_params.yml
-      # renderizam um valor por ambiente (achado testando contra JCL real -
-      # ver docs/jcl-parametros-por-ambiente.md). O passo acima ja validou
-      # com --env default (TU); este mostra o mesmo job renderizado para PRD.
-      - name: Validar JCL com parametro por ambiente (--env PRD)
-        continue-on-error: true
-        run: python -m esteira_model_cob validate jcl/poc005_por_ambiente.jcl --env PRD
-
-      - name: Simular submissao (MockZosAdapter)
-        continue-on-error: true
-        run: python -m esteira_model_cob simulate jcl/
-
-      # tests/fixtures/*.bin sao bytes EBCDIC (cp037) - uma fixture limpa e
-      # uma com bytes de controle hard-coded (achado da esteira Endevor
-      # real - ver docs/reuniao-endevor-jcl-binarios.md). continue-on-error
-      # porque a fixture "hex_declarado" e reprovada por design (pytest ja
-      # cobre isso via assert; isto e a saida "ao vivo" da demo).
-      - name: Binary guard - massa de teste EBCDIC (jcl/proc reais nao tem hoje)
-        continue-on-error: true
-        run: python -m esteira_model_cob binary-guard tests/fixtures/
-
-      - name: Gerar JCL Pipeline Report
-        if: always()
-        run: |
-          for jcl in jcl/*.jcl; do
-            python -m esteira_model_cob report "$jcl" --env "$ESTM_ENV"
-          done
-
-      # "Publicacao" da POC: promove o commit validado para uma pasta
-      # versionada na VM, representando o ambiente de destino - o
-      # equivalente, nesta fase, a mover o membro para a PDS do ambiente
-      # no fluxo atual. Fase 2 troca isso pela submissao real via z/OSMF.
-      - name: Publicar artefatos validados no ambiente
-        if: always()
-        run: |
-          set -euo pipefail
-          DEST="$HOME/publicado/${ESTM_ENV}/${GITHUB_RUN_NUMBER}-${GITHUB_SHA::8}"
-          mkdir -p "$DEST"
-          cp -r jcl proc config reports "$DEST"/
-          {
-            echo "ambiente=${ESTM_ENV}"
-            echo "commit=${GITHUB_SHA}"
-            echo "ref=${GITHUB_REF_NAME}"
-            echo "autor=${GITHUB_ACTOR}"
-            echo "run=${GITHUB_RUN_ID}"
-            echo "publicado_em=$(date -u +%FT%TZ)"
-          } > "$DEST/MANIFEST.txt"
-          ln -sfn "$DEST" "$HOME/publicado/${ESTM_ENV}/latest"
-          echo "Publicado em $DEST"
-          cat "$DEST/MANIFEST.txt"
-
-      - name: Upload dos relatorios (publicacao)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: jcl-pipeline-reports-vm
           path: reports/

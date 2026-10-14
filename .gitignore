@@ -25,6 +25,22 @@ jcl/real/
 tools/proleap-runner/target/
 *.class
 
+# Arquivos locais de ferramentas de desenvolvimento (nunca versionar)
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+**/CLAUDE.md
+**/CLAUDE.local.md
+.mcp.json
+AGENTS.md
+.cursor/
+.cursorrules
+.windsurfrules
+.aider*
+.continue/
+.codeium/
+.github/copilot-instructions.md
+
 # Editor / OS
 .vscode/
 .idea/

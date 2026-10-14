@@ -2,11 +2,60 @@ from pathlib import Path
 
 import pytest
 
-from esteira_model_cob.templating import load_env_params, params_for, render
+from esteira_model_cob.templating import (
+    ORIGIN_CONFIG,
+    ORIGIN_GITHUB,
+    load_env_params,
+    params_for,
+    params_from_github_vars,
+    placeholders,
+    render,
+    resolve_params,
+)
 
 _ROOT = Path(__file__).resolve().parents[1]
 _ENV_PARAMS_PATH = _ROOT / "config" / "jcl_env_params.yml"
 _POC005 = _ROOT / "jcl" / "poc005_por_ambiente.jcl"
+
+
+def test_params_from_github_vars_keeps_only_jcl_prefix():
+    raw = '{"JCL_HLQ": "ESTM.POC.TI", "JCL_SPACE_PRIMARY": 600, "GH_KV_DEV": "kv-x"}'
+    assert params_from_github_vars(raw) == {"HLQ": "ESTM.POC.TI", "SPACE_PRIMARY": "600"}
+    assert params_from_github_vars(None) == {}
+    assert params_from_github_vars("") == {}
+
+
+def test_github_vars_override_config_and_record_origin():
+    resolved = resolve_params({"HLQ": "ESTM.POC.TU", "UNIT": "SYSDA"}, {"HLQ": "ESTM.POC.TI"})
+    assert resolved.values == {"HLQ": "ESTM.POC.TI", "UNIT": "SYSDA"}
+    assert resolved.origins == {"HLQ": ORIGIN_GITHUB, "UNIT": ORIGIN_CONFIG}
+
+
+def test_placeholders_in_order_without_duplicates():
+    assert placeholders("${HLQ}.A ${UNIT} ${HLQ}.B $X") == ["HLQ", "UNIT", "X"]
+
+
+def test_render_command_reads_params_from_caller_repo_and_github_vars(tmp_path, monkeypatch):
+    """No workflow reutilizavel, os parametros vem do yml do repositorio de
+    JCL (ESTM_JCL_ENV_PARAMS) e as GitHub variables JCL_* tem precedencia."""
+    from esteira_model_cob.cli import main
+
+    (tmp_path / "ESTMX009.jcl").write_text(
+        "//ESTMX009 JOB 'A','B',MSGCLASS=X\n//STEP01 EXEC PGM=SORT\n"
+        "//SORTOUT DD DSN=${HLQ}.SAIDA(+1),UNIT=${UNIT}\n",
+        encoding="utf-8",
+    )
+    params = tmp_path / "jcl_env_params.yml"
+    params.write_text('ESTMX009:\n  TI:\n    HLQ: "ESTM.POC.TI"\n    UNIT: "SYSDA"\n', encoding="utf-8")
+    monkeypatch.setenv("ESTM_JCL_ENV_PARAMS", str(params))
+    monkeypatch.setenv("ESTM_GITHUB_VARS", '{"JCL_UNIT": "DISCO"}')
+
+    with pytest.raises(SystemExit) as exit_info:
+        main(["render", str(tmp_path / "ESTMX009.jcl"), "--env", "TI", "--out", str(tmp_path / "build")])
+
+    assert exit_info.value.code == 0
+    rendered = (tmp_path / "build" / "TI" / "ESTMX009TI.jcl").read_text(encoding="utf-8")
+    assert "DSN=ESTM.POC.TI.SAIDA(+1),UNIT=DISCO" in rendered
 
 
 def test_render_substitutes_placeholders():
