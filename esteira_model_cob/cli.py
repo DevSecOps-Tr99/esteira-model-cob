@@ -48,6 +48,7 @@ _PROC_DIR = _REPO_ROOT / "proc"
 # O workflow repassa toJSON(vars) nesta variavel de ambiente; so as
 # variables JCL_* viram parametro de JCL (ver templating.py).
 _GITHUB_VARS_ENV = "ESTM_GITHUB_VARS"
+_ENV_PARAMS_ENV = "ESTM_JCL_ENV_PARAMS"
 
 _ENVIRONMENTS = ["TU", "TI", "PRD"]
 
@@ -64,8 +65,18 @@ def _iter_any_files(target: Path) -> list[Path]:
     return sorted(p for p in target.rglob("*") if p.is_file())
 
 
+def _env_params_path() -> Path:
+    """Os parametros por ambiente pertencem ao repositorio de JCL (o caller
+    do workflow reutilizavel), nao ao motor: o workflow aponta
+    ESTM_JCL_ENV_PARAMS para o config/jcl_env_params.yml de la. Sem a
+    variavel, usa o do proprio motor (JCLs de demonstracao em jcl/)."""
+    override = os.environ.get(_ENV_PARAMS_ENV)
+    return Path(override) if override else _JCL_ENV_PARAMS_PATH
+
+
 def _resolve_params(raw_text: str, job_name: str | None, environment: str) -> ResolvedParams:
-    env_config = load_env_params(_JCL_ENV_PARAMS_PATH)
+    path = _env_params_path()
+    env_config = load_env_params(path) if path.exists() else {}
     config_params = params_for(env_config, job_name, environment)
     # GitHub variables so entram em JCL que de fato tem placeholder - um JCL
     # sem ${VAR} pode ter "$" legitimo em nome de dataset/membro.

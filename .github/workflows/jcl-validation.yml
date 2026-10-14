@@ -1,4 +1,8 @@
-name: JCL Pipeline
+name: CI da esteira
+
+# CI do proprio motor (testes, ProLeap, demonstracao com os JCLs de jcl/).
+# A publicacao de JCL roda no repositorio de JCL, pelo workflow
+# reutilizavel jcl-pipeline.yml.
 
 on:
   pull_request:
@@ -10,21 +14,9 @@ on:
       - "esteira_model_cob/**"
       - "tools/proleap-runner/**"
       - "tests/**"
+      - ".github/workflows/**"
   push:
     branches: [main, develop, "release/**", "hotfix/**"]
-  # Seletor de publicacao: escolhe o ambiente na hora de rodar. TI e PRD
-  # param para aprovacao (GitHub Environments) antes do job deploy.
-  workflow_dispatch:
-    inputs:
-      ambiente:
-        description: "Ambiente de destino"
-        type: choice
-        options: [TU, TI, PRD]
-        default: TU
-      jcl:
-        description: "JCL modelo a publicar"
-        type: string
-        default: jcl/ESTMX001.jcl
 
 jobs:
   validate:
@@ -111,96 +103,3 @@ jobs:
         with:
           name: jcl-pipeline-reports
           path: reports/
-
-  # Publicacao no ambiente da POC na Azure (docs/ambiente-poc-azure.md),
-  # no mesmo padrao da esteira corporativa para Linux: azure/login com o
-  # JSON do SPN, credenciais lidas do Key Vault pelo nome guardado nas
-  # variables G_DEPLOYMENT_TARGET_LINUX_<ENV>_*, SSH no servidor de
-  # destino. Roda no runner self-hosted da mesma VNet do destino.
-  #
-  # Ambiente: o seletor do workflow_dispatch ou, em push, o mapeamento
-  # branch -> ambiente do docs/gitflow.md. TI e PRD esperam aprovacao do
-  # GitHub Environment antes do primeiro passo.
-  deploy:
-    needs: validate
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    runs-on: [self-hosted, linux, x64, estm-runner]
-    environment: >-
-      ${{
-        inputs.ambiente
-        || github.ref_name == 'main' && 'PRD'
-        || startsWith(github.ref_name, 'release/') && 'TI'
-        || startsWith(github.ref_name, 'hotfix/') && 'PRD'
-        || 'TU'
-      }}
-    env:
-      ESTM_ENV: >-
-        ${{
-          inputs.ambiente
-          || github.ref_name == 'main' && 'PRD'
-          || startsWith(github.ref_name, 'release/') && 'TI'
-          || startsWith(github.ref_name, 'hotfix/') && 'PRD'
-          || 'TU'
-        }}
-      ESTM_JCL: ${{ inputs.jcl || 'jcl/ESTMX001.jcl' }}
-      # So as variables JCL_* viram parametro de JCL (templating.py).
-      ESTM_GITHUB_VARS: ${{ toJSON(vars) }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      # Ubuntu 24.04 marca o Python do sistema como "externally managed"
-      # (PEP 668) - uma venv dedicada para o resto do job.
-      - name: Preparar ambiente Python (venv)
-        run: |
-          python3 -m venv "$HOME/.venvs/esteira-model-cob"
-          echo "$HOME/.venvs/esteira-model-cob/bin" >> "$GITHUB_PATH"
-
-      - name: Instalar a esteira
-        run: pip install -q -e .
-
-      - name: Renderizar JCL para ${{ env.ESTM_ENV }}
-        id: render
-        run: python -m esteira_model_cob render "$ESTM_JCL" --env "$ESTM_ENV" --out build
-
-      - name: Quality/Security Gate no JCL final
-        run: python -m esteira_model_cob validate ${{ steps.render.outputs.arquivos }} --env "$ESTM_ENV"
-
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.SPN_KV_DEV_SECRET }}
-          allow-no-subscriptions: true
-
-      - name: Key Vault - credenciais de ${{ env.ESTM_ENV }}
-        run: >-
-          python -m esteira_model_cob kv-fetch
-          --vault "${{ vars.GH_KV_DEV }}"
-          --secret "ssh-key=${{ vars[format('G_DEPLOYMENT_TARGET_LINUX_{0}_KEY', env.ESTM_ENV)] }}"
-          --secret "token=${{ vars[format('G_DEPLOYMENT_TARGET_LINUX_{0}_TOKEN', env.ESTM_ENV)] }}"
-          --out "$RUNNER_TEMP/estm-cred"
-
-      - name: SSH - publicar e submeter em ${{ env.ESTM_ENV }}
-        env:
-          ESTM_KNOWN_HOSTS: ${{ vars.G_DEPLOYMENT_TARGET_LINUX_KNOWN_HOSTS }}
-        run: >-
-          python -m esteira_model_cob deploy ${{ steps.render.outputs.arquivos }}
-          --env "$ESTM_ENV"
-          --host "${{ vars[format('DEPLOY_SERVERS_{0}', env.ESTM_ENV)] }}"
-          --user "${{ vars[format('G_DEPLOYMENT_TARGET_LINUX_{0}_USER', env.ESTM_ENV)] }}"
-          --remote-dir "${{ vars[format('G_DEPLOYMENT_TARGET_{0}_PATH', env.ESTM_ENV)] }}"
-          --known-hosts "$ESTM_KNOWN_HOSTS"
-          --cred-dir "$RUNNER_TEMP/estm-cred"
-
-      - name: Upload do JCL publicado
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: jcl-publicado-${{ env.ESTM_ENV }}
-          path: build/
-          if-no-files-found: ignore
-
-      # Runner self-hosted e persistente: nada de credencial fica no disco.
-      - name: Limpar credenciais
-        if: always()
-        run: rm -rf "$RUNNER_TEMP/estm-cred" && az logout || true

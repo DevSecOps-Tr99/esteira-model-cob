@@ -10,48 +10,10 @@
 # no .jcl. Um job sem entrada aqui roda sem nenhuma substituicao (mesmo
 # comportamento de antes deste mecanismo existir).
 
-# ESTMX001 - job usado na publicacao no ambiente da POC (Azure). Os mesmos
-# nomes existem como GitHub variables JCL_<VAR> em cada Environment
-# (TU/TI/PRD); quando presentes, elas tem precedencia sobre os valores
-# abaixo (ver esteira_model_cob/templating.py e docs/ambiente-poc-azure.md).
-# Os valores aqui servem para rodar local e no job validate.
-ESTMX001:
-  TU:
-    ACCT: "ESTM,0001,TU01"
-    PROGRAMMER: "ESTMTU"
-    CLASS: "A"
-    MSGCLASS: "X"
-    SCHENV: "BATCHTU"
-    NOTIFY: "ESTMTU"
-    HLQ: "ESTM.POC.TU"
-    UNIT: "SYSDA"
-    SPACE_PRIMARY: "000600"
-    SPACE_SECONDARY: "0240"
-    DATACLAS: "DCTESTE"
-  TI:
-    ACCT: "ESTM,0001,TI01"
-    PROGRAMMER: "ESTMTI"
-    CLASS: "A"
-    MSGCLASS: "X"
-    SCHENV: "BATCHTI"
-    NOTIFY: "ESTMTI"
-    HLQ: "ESTM.POC.TI"
-    UNIT: "SYSDA"
-    SPACE_PRIMARY: "000600"
-    SPACE_SECONDARY: "0240"
-    DATACLAS: "DCTESTE"
-  PRD:
-    ACCT: "ESTM,0001,PR01"
-    PROGRAMMER: "ESTMPRD"
-    CLASS: "P"
-    MSGCLASS: "Z"
-    SCHENV: "BATCH"
-    NOTIFY: "ESTMPRD"
-    HLQ: "ESTM.POC.PRD"
-    UNIT: "DISCO"
-    SPACE_PRIMARY: "006000"
-    SPACE_SECONDARY: "2400"
-    DATACLAS: "DCPRODX"
+# Os JCLs publicados pela esteira (ex.: ESTMX001) e os parametros deles
+# ficam no repositorio de JCL (DevSecOps-Tr99/esteira-model-cob-jcl); o
+# workflow reutilizavel aponta ESTM_JCL_ENV_PARAMS para o yml de la. Este
+# arquivo serve so aos JCLs de demonstracao de jcl/.
 
 POC005:
   TU:

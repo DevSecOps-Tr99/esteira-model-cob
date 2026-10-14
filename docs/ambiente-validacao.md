@@ -74,10 +74,11 @@ alcance de rede interna.
 
 ## Status
 
-> **Substituído por `docs/ambiente-poc-azure.md`.** A VM `VM-COBOL-POC` foi
-> removida. O job `publish` deu lugar ao job `deploy`, que lê as credenciais
-> no Key Vault e publica por SSH em um servidor de destino. O histórico
-> abaixo fica só como referência.
+> **Substituído pelo ambiente da POC na Azure** (`docs/esteira-poc-como-funciona.md`
+> e o repositório `esteira-model-cob-infra`). A VM `VM-COBOL-POC` foi
+> removida. O job `publish` deu lugar ao job `deploy` do workflow reutilizável
+> `jcl-pipeline.yml`, que lê as credenciais no Key Vault e publica por SSH em
+> um servidor de destino. O histórico abaixo fica só como referência.
 
 A VM `VM-COBOL-POC` estava registrada como self-hosted runner
 (`vm-cobol-poc`, labels `self-hosted,linux,x64,vm-cobol-poc`), rodando

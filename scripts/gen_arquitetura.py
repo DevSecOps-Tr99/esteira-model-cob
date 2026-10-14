@@ -217,17 +217,17 @@ def build() -> Diagram:
     # ------------------------------------------------------------- GitHub
     d.rect(40, 200, 840, 880, fill="#f6f8fa", stroke=INK, width=2)
     d.icon("github/mark-github.svg", 290, 212, size=30)
-    d.text(330, 216, "GitHub · DevSecOps-Tr99/esteira-model-cob (público)", size=17, bold=True)
+    d.text(330, 216, "GitHub · DevSecOps-Tr99 (3 repositórios públicos)", size=17, bold=True)
 
-    d.node(70, 260, 360, 130, ["github/git-branch.svg"], "Repositório",
-           "Motor Python (esteira_model_cob)\nconfig/*.yml · jcl/ESTMX001.jcl (modelo)\ninfra/ (Bicep, cloud-init, scripts)\ntags vX.Y.Z na main")
-    d.node(470, 260, 380, 130, ["github/workflow.svg"], "Workflow jcl-validation.yml",
-           "pull_request → só validate\npush develop · release/* · main · hotfix/*\nworkflow_dispatch: seletor TU | TI | PRD")
+    d.node(70, 260, 360, 130, ["github/git-branch.svg"], "Repositórios",
+           "esteira-model-cob-jcl: JCLs + parâmetros + caller\nesteira-model-cob: motor + reutilizável + regras\nesteira-model-cob-infra: Bicep + provisionamento\nGitflow e tags vX.Y.Z")
+    d.node(470, 260, 380, 130, ["github/workflow.svg"], "Caller → workflow reutilizável",
+           "jcl: esteira.yml (gatilhos + seletor TU|TI|PRD)\n  uses: esteira-model-cob/…/jcl-pipeline.yml@main\n  secrets: inherit\nPR → validate · push/seletor → validate + deploy")
     d.node(70, 440, 360, 210, ["github/shield-check.svg"], "Job validate · ubuntu-latest",
-           "gitleaks (histórico completo)\npytest + ProLeap (Java 17 / Maven)\nRules Engine + Quality/Security Gate\nsimulate (MockZosAdapter)\nbinary-guard (bytes EBCDIC)\nJCL Pipeline Report (artifact)\n\nFinding crítico → FAILED → não publica")
-    d.node(470, 440, 380, 210, ["github/person.svg", "github/lock.svg"], "GitHub Environments",
+           "checkout do repo jcl + motor (.esteira)\ngitleaks (histórico completo)\nRules Engine + Quality/Security Gate\n  em TU, TI e PRD\nJCL Pipeline Report (artifact)\n\nFinding crítico → FAILED → não publica\n(testes/ProLeap: CI do próprio motor)")
+    d.node(470, 440, 380, 210, ["github/person.svg", "github/lock.svg"], "Environments (repo jcl)",
            "TU   · sem aprovação\nTI   · 1 aprovador\nPRD · 1 aprovador\n\nVariables por Environment (JCL_*):\nACCT · PROGRAMMER · CLASS · MSGCLASS\nSCHENV · NOTIFY · HLQ · UNIT\nSPACE_PRIMARY/SECONDARY · DATACLAS")
-    d.node(70, 700, 360, 200, ["github/key.svg"], "Secret e variables do repositório",
+    d.node(70, 700, 360, 200, ["github/key.svg"], "Secret e variables (repo jcl)",
            "secret SPN_KV_DEV_SECRET (JSON do SPN)\nGH_KV_DEV · DEPLOY_SERVERS_<ENV>\nG_DEPLOYMENT_TARGET_LINUX_<ENV>_USER\nG_DEPLOYMENT_TARGET_LINUX_<ENV>_KEY\nG_DEPLOYMENT_TARGET_LINUX_<ENV>_TOKEN\nG_DEPLOYMENT_TARGET_<ENV>_PATH\nG_DEPLOYMENT_TARGET_LINUX_KNOWN_HOSTS")
     d.node(470, 700, 380, 250, ["github/terminal.svg"], "Job deploy · runs-on estm-runner",
            "1  render → build/<ENV>/ESTMX001<ENV>.jcl\n2  gate no JCL final (PASS obrigatório)\n3  azure/login com o SPN\n4  kv-fetch: chave SSH + token (mascarados)\n5  deploy: SSH + SCP + estm-submit\n6  upload do JCL publicado (artifact)\n7  apaga credenciais + az logout\n\nJob Summary: origem de cada variável,\nversões no Key Vault, whoami remoto, JOBID")
@@ -239,10 +239,10 @@ def build() -> Diagram:
     d.icon("azure/subscription.svg", 936, 212, size=30)
     d.text(976, 216, "Azure · subscription da POC (tenant TR99)", size=17, bold=True, color=INK)
 
-    d.node(950, 260, 340, 120, ["azure/app-registration.svg"], "Entra ID · SPN da esteira",
+    d.node(950, 260, 340, 136, ["azure/app-registration.svg"], "Entra ID · SPN da esteira",
            "sp-esteira-model-cob-poc-kv\nusado pelo azure/login\npapel: Key Vault Secrets User (só no KV)", stroke=BLUE)
-    d.node(1330, 260, 360, 120, ["github/file-code.svg"], "Infra como código",
-           "infra/main.bicep + cloud-init\ninfra/provisionar.ps1 (idempotente)\nauto-shutdown 22h (Brasília) nas 2 VMs", stroke=BLUE)
+    d.node(1330, 260, 360, 136, ["github/file-code.svg"], "Infra como código",
+           "repo esteira-model-cob-infra\nmain.bicep + cloud-init + estm-submit\nprovisionar.ps1 (idempotente)\nauto-shutdown 22h (Brasília) nas 2 VMs", stroke=BLUE)
 
     d.rect(950, 420, 740, 640, fill="#ffffff", stroke=BLUE, dashed=True)
     d.icon("azure/resource-group.svg", 1084, 430, size=28)
@@ -271,7 +271,7 @@ def build() -> Diagram:
     d.arrow([(430, 800), (470, 800)], color=MUTED, dashed=True)
     d.arrow([(990, 880), (850, 880)], color=GREEN, label="④ runner busca o job\n(HTTPS 443, só saída)",
             label_at=(858, 890))
-    d.arrow([(1060, 740), (1060, 380)], color=BLUE, label="⑤ azure/login\n(SPN)", label_at=(1068, 540))
+    d.arrow([(1060, 740), (1060, 396)], color=BLUE, label="⑤ azure/login\n(SPN)", label_at=(1068, 540))
     d.arrow([(1270, 760), (1380, 640)], color=BLUE, label="⑥ lê chave SSH\n+ token", label_at=(1150, 600))
     d.arrow([(1270, 880), (1370, 880)], color=RED, width=2.5, label="⑦ SSH :22\n+ SCP", label_at=(1280, 840))
     d.arrow([(1500, 740), (1500, 640)], color=BLUE, label="⑧ valida token\n(managed identity)",
@@ -279,7 +279,7 @@ def build() -> Diagram:
 
     legend = (
         "①  Push ou PR no repositório (Gitflow). O seletor do workflow_dispatch escolhe TU, TI ou PRD na hora de publicar.\n"
-        "②  validate: gitleaks, testes, Rules Engine e Quality/Security Gate. Finding crítico bloqueia a esteira.\n"
+        "②  O caller do repositório de JCL chama o workflow reutilizável: gitleaks e Quality/Security Gate em TU, TI e PRD. Finding crítico bloqueia.\n"
         "③  deploy depende do validate e do GitHub Environment: TU segue direto, TI e PRD esperam aprovação.\n"
         "④  O runner self-hosted dentro da VNet busca o job no GitHub (conexão de saída, nenhuma porta aberta).\n"
         "⑤  azure/login com o JSON do SPN (padrão corporativo SPN_KV_DEV_SECRET).\n"
