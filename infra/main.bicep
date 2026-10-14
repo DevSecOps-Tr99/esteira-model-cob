@@ -37,8 +37,11 @@ param operadorObjectId string
 ])
 param operadorPrincipalType string = 'User'
 
-param runnerVmSize string = 'Standard_B2s'
-param alvoVmSize string = 'Standard_B1s'
+// Serie B nao esta liberada para a subscription da POC em brazilsouth e
+// a v7 ficou sem capacidade na regiao (AllocationFailed). D2s_v4: 2 vCPU,
+// 8 GB. Sobrescreva via provisionar.ps1 -VmSize se a regiao mudar.
+param runnerVmSize string = 'Standard_D2s_v4'
+param alvoVmSize string = 'Standard_D2s_v4'
 param alvoPrivateIp string = '10.60.1.10'
 
 @description('Horario do desligamento automatico diario (HHmm), fuso de Brasilia.')

@@ -30,6 +30,7 @@ param(
     [string]$RunnerName = 'vm-estm-runner',
     [string]$RunnerLabels = 'self-hosted,linux,x64,estm-runner',
     [string[]]$Reviewers = @(),
+    [string]$VmSize = 'Standard_D2s_v4',
     [string]$Az = 'az',
     [string]$Gh = 'gh',
     [string]$Python = 'python'
@@ -39,10 +40,13 @@ $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
 $Ambientes = @('TU', 'TI', 'PRD')
 
+# Funcao simples (sem param/[Parameter]) de proposito: numa funcao avancada
+# o PowerShell tentaria casar flags como -o com -OutVariable/-OutBuffer.
 function Invoke-Native {
-    param([string]$Exe, [Parameter(ValueFromRemainingArguments = $true)][string[]]$Arguments)
-    $out = & $Exe @Arguments
-    if ($LASTEXITCODE -ne 0) { throw "$Exe $($Arguments[0..2] -join ' ') ... saiu com $LASTEXITCODE" }
+    $exe = $args[0]
+    $resto = @($args | Select-Object -Skip 1)
+    $out = & $exe @resto
+    if ($LASTEXITCODE -ne 0) { throw "$exe $($resto[0..2] -join ' ') ... saiu com $LASTEXITCODE" }
     return $out
 }
 function az { Invoke-Native $Az @args }
@@ -134,6 +138,8 @@ try {
         contentVersion = '1.0.0.0'
         parameters     = @{
             location           = @{ value = $Location }
+            runnerVmSize       = @{ value = $VmSize }
+            alvoVmSize         = @{ value = $VmSize }
             adminPublicKey     = @{ value = $publicas['admin'] }
             deployKeyTU        = @{ value = $publicas['TU'] }
             deployKeyTI        = @{ value = $publicas['TI'] }
