@@ -12,6 +12,19 @@ on:
       - "tests/**"
   push:
     branches: [main, develop, "release/**", "hotfix/**"]
+  # Seletor de publicacao: escolhe o ambiente na hora de rodar. TI e PRD
+  # param para aprovacao (GitHub Environments) antes do job deploy.
+  workflow_dispatch:
+    inputs:
+      ambiente:
+        description: "Ambiente de destino"
+        type: choice
+        options: [TU, TI, PRD]
+        default: TU
+      jcl:
+        description: "JCL modelo a publicar"
+        type: string
+        default: jcl/ESTMX001.jcl
 
 jobs:
   validate:
@@ -99,17 +112,23 @@ jobs:
           name: jcl-pipeline-reports
           path: reports/
 
-  # Roda na VM de validacao (self-hosted, ver docs/ambiente-validacao.md).
-  # So dispara em push (nao em PR) - promocao de ambiente acontece so
-  # depois do merge, seguindo o mapeamento branch -> ambiente do
-  # docs/gitflow.md e config/environments.yml.
-  publish:
+  # Publicacao no ambiente da POC na Azure (docs/ambiente-poc-azure.md),
+  # no mesmo padrao da esteira corporativa para Linux: azure/login com o
+  # JSON do SPN, credenciais lidas do Key Vault pelo nome guardado nas
+  # variables G_DEPLOYMENT_TARGET_LINUX_<ENV>_*, SSH no servidor de
+  # destino. Roda no runner self-hosted da mesma VNet do destino.
+  #
+  # Ambiente: o seletor do workflow_dispatch ou, em push, o mapeamento
+  # branch -> ambiente do docs/gitflow.md. TI e PRD esperam aprovacao do
+  # GitHub Environment antes do primeiro passo.
+  deploy:
     needs: validate
-    if: github.event_name == 'push'
-    runs-on: [self-hosted, linux, x64]
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: [self-hosted, linux, x64, estm-runner]
     environment: >-
       ${{
-        github.ref_name == 'main' && 'PRD'
+        inputs.ambiente
+        || github.ref_name == 'main' && 'PRD'
         || startsWith(github.ref_name, 'release/') && 'TI'
         || startsWith(github.ref_name, 'hotfix/') && 'PRD'
         || 'TU'
@@ -117,88 +136,71 @@ jobs:
     env:
       ESTM_ENV: >-
         ${{
-          github.ref_name == 'main' && 'PRD'
+          inputs.ambiente
+          || github.ref_name == 'main' && 'PRD'
           || startsWith(github.ref_name, 'release/') && 'TI'
           || startsWith(github.ref_name, 'hotfix/') && 'PRD'
           || 'TU'
         }}
+      ESTM_JCL: ${{ inputs.jcl || 'jcl/ESTMX001.jcl' }}
+      # So as variables JCL_* viram parametro de JCL (templating.py).
+      ESTM_GITHUB_VARS: ${{ toJSON(vars) }}
 
     steps:
       - uses: actions/checkout@v4
 
       # Ubuntu 24.04 marca o Python do sistema como "externally managed"
-      # (PEP 668) e nao tem o comando "python" puro (so "python3") - uma
-      # venv dedicada evita as duas coisas para o resto do job.
+      # (PEP 668) - uma venv dedicada para o resto do job.
       - name: Preparar ambiente Python (venv)
         run: |
           python3 -m venv "$HOME/.venvs/esteira-model-cob"
           echo "$HOME/.venvs/esteira-model-cob/bin" >> "$GITHUB_PATH"
 
       - name: Instalar a esteira
-        run: pip install -e ".[dev]"
+        run: pip install -q -e .
 
-      - name: Testes (pytest, com ProLeap real - java/mvn presentes na VM)
-        run: pytest -q
+      - name: Renderizar JCL para ${{ env.ESTM_ENV }}
+        id: render
+        run: python -m esteira_model_cob render "$ESTM_JCL" --env "$ESTM_ENV" --out build
 
-      - name: Validar JCLs (Rules Engine + Quality Gate)
-        continue-on-error: true
-        run: python -m esteira_model_cob validate jcl/
+      - name: Quality/Security Gate no JCL final
+        run: python -m esteira_model_cob validate ${{ steps.render.outputs.arquivos }} --env "$ESTM_ENV"
 
-      # poc005 tem um placeholder ${SPACE_PRIMARY}/${SPACE_SECONDARY} -
-      # esteira_model_cob/templating.py + config/jcl_env_params.yml
-      # renderizam um valor por ambiente (achado testando contra JCL real -
-      # ver docs/jcl-parametros-por-ambiente.md). O passo acima ja validou
-      # com --env default (TU); este mostra o mesmo job renderizado para PRD.
-      - name: Validar JCL com parametro por ambiente (--env PRD)
-        continue-on-error: true
-        run: python -m esteira_model_cob validate jcl/poc005_por_ambiente.jcl --env PRD
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.SPN_KV_DEV_SECRET }}
+          allow-no-subscriptions: true
 
-      - name: Simular submissao (MockZosAdapter)
-        continue-on-error: true
-        run: python -m esteira_model_cob simulate jcl/
+      - name: Key Vault - credenciais de ${{ env.ESTM_ENV }}
+        run: >-
+          python -m esteira_model_cob kv-fetch
+          --vault "${{ vars.GH_KV_DEV }}"
+          --secret "ssh-key=${{ vars[format('G_DEPLOYMENT_TARGET_LINUX_{0}_KEY', env.ESTM_ENV)] }}"
+          --secret "token=${{ vars[format('G_DEPLOYMENT_TARGET_LINUX_{0}_TOKEN', env.ESTM_ENV)] }}"
+          --out "$RUNNER_TEMP/estm-cred"
 
-      # tests/fixtures/*.bin sao bytes EBCDIC (cp037) - uma fixture limpa e
-      # uma com bytes de controle hard-coded (achado da esteira Endevor
-      # real - ver docs/reuniao-endevor-jcl-binarios.md). continue-on-error
-      # porque a fixture "hex_declarado" e reprovada por design (pytest ja
-      # cobre isso via assert; isto e a saida "ao vivo" da demo).
-      - name: Binary guard - massa de teste EBCDIC (jcl/proc reais nao tem hoje)
-        continue-on-error: true
-        run: python -m esteira_model_cob binary-guard tests/fixtures/
+      - name: SSH - publicar e submeter em ${{ env.ESTM_ENV }}
+        env:
+          ESTM_KNOWN_HOSTS: ${{ vars.G_DEPLOYMENT_TARGET_LINUX_KNOWN_HOSTS }}
+        run: >-
+          python -m esteira_model_cob deploy ${{ steps.render.outputs.arquivos }}
+          --env "$ESTM_ENV"
+          --host "${{ vars[format('DEPLOY_SERVERS_{0}', env.ESTM_ENV)] }}"
+          --user "${{ vars[format('G_DEPLOYMENT_TARGET_LINUX_{0}_USER', env.ESTM_ENV)] }}"
+          --remote-dir "${{ vars[format('G_DEPLOYMENT_TARGET_{0}_PATH', env.ESTM_ENV)] }}"
+          --known-hosts "$ESTM_KNOWN_HOSTS"
+          --cred-dir "$RUNNER_TEMP/estm-cred"
 
-      - name: Gerar JCL Pipeline Report
-        if: always()
-        run: |
-          for jcl in jcl/*.jcl; do
-            python -m esteira_model_cob report "$jcl" --env "$ESTM_ENV"
-          done
-
-      # "Publicacao" da POC: promove o commit validado para uma pasta
-      # versionada na VM, representando o ambiente de destino - o
-      # equivalente, nesta fase, a mover o membro para a PDS do ambiente
-      # no fluxo atual. Fase 2 troca isso pela submissao real via z/OSMF.
-      - name: Publicar artefatos validados no ambiente
-        if: always()
-        run: |
-          set -euo pipefail
-          DEST="$HOME/publicado/${ESTM_ENV}/${GITHUB_RUN_NUMBER}-${GITHUB_SHA::8}"
-          mkdir -p "$DEST"
-          cp -r jcl proc config reports "$DEST"/
-          {
-            echo "ambiente=${ESTM_ENV}"
-            echo "commit=${GITHUB_SHA}"
-            echo "ref=${GITHUB_REF_NAME}"
-            echo "autor=${GITHUB_ACTOR}"
-            echo "run=${GITHUB_RUN_ID}"
-            echo "publicado_em=$(date -u +%FT%TZ)"
-          } > "$DEST/MANIFEST.txt"
-          ln -sfn "$DEST" "$HOME/publicado/${ESTM_ENV}/latest"
-          echo "Publicado em $DEST"
-          cat "$DEST/MANIFEST.txt"
-
-      - name: Upload dos relatorios (publicacao)
+      - name: Upload do JCL publicado
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jcl-pipeline-reports-vm
-          path: reports/
+          name: jcl-publicado-${{ env.ESTM_ENV }}
+          path: build/
+          if-no-files-found: ignore
+
+      # Runner self-hosted e persistente: nada de credencial fica no disco.
+      - name: Limpar credenciais
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/estm-cred" && az logout || true

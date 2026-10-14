@@ -13,6 +13,11 @@
 deploy_targets:
   jcl:
     copyMode: text
+    # Arquivo renderizado por ambiente: membro + sufixo do ambiente
+    # (ESTMX001TU.jcl, ESTMX001TI.jcl, ESTMX001PRD.jcl) - mesmo padrao das
+    # copias por ambiente dos JCLs reais. No destino, o conteudo vira o
+    # membro (sem sufixo) da biblioteca do ambiente.
+    file_naming: "{member}{env}.jcl"
     library:
       TU: "ESTM.POC.TU.JCLLIB"
       TI: "ESTM.POC.TI.JCLLIB"

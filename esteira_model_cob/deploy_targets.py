@@ -46,3 +46,12 @@ def resolve(
         library=library,
         copy_mode=copy_mode,
     )
+
+
+def file_name_for(config: dict, component_type: str, member: str, environment: str) -> str:
+    """Nome do arquivo renderizado por ambiente (ex.: ESTMX001TU.jcl), no
+    mesmo padrao das copias por ambiente dos JCLs reais - o membro com o
+    sufixo do ambiente."""
+    entry = config["deploy_targets"][component_type]
+    pattern = entry.get("file_naming", "{member}{env}.jcl")
+    return pattern.format(member=member, env=environment)

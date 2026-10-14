@@ -2,11 +2,47 @@ from pathlib import Path
 
 import pytest
 
-from esteira_model_cob.templating import load_env_params, params_for, render
+from esteira_model_cob.templating import (
+    ORIGIN_CONFIG,
+    ORIGIN_GITHUB,
+    load_env_params,
+    params_for,
+    params_from_github_vars,
+    placeholders,
+    render,
+    resolve_params,
+)
 
 _ROOT = Path(__file__).resolve().parents[1]
 _ENV_PARAMS_PATH = _ROOT / "config" / "jcl_env_params.yml"
 _POC005 = _ROOT / "jcl" / "poc005_por_ambiente.jcl"
+_ESTMX001 = _ROOT / "jcl" / "ESTMX001.jcl"
+
+
+def test_params_from_github_vars_keeps_only_jcl_prefix():
+    raw = '{"JCL_HLQ": "ESTM.POC.TI", "JCL_SPACE_PRIMARY": 600, "GH_KV_DEV": "kv-x"}'
+    assert params_from_github_vars(raw) == {"HLQ": "ESTM.POC.TI", "SPACE_PRIMARY": "600"}
+    assert params_from_github_vars(None) == {}
+    assert params_from_github_vars("") == {}
+
+
+def test_github_vars_override_config_and_record_origin():
+    resolved = resolve_params({"HLQ": "ESTM.POC.TU", "UNIT": "SYSDA"}, {"HLQ": "ESTM.POC.TI"})
+    assert resolved.values == {"HLQ": "ESTM.POC.TI", "UNIT": "SYSDA"}
+    assert resolved.origins == {"HLQ": ORIGIN_GITHUB, "UNIT": ORIGIN_CONFIG}
+
+
+def test_placeholders_in_order_without_duplicates():
+    assert placeholders("${HLQ}.A ${UNIT} ${HLQ}.B $X") == ["HLQ", "UNIT", "X"]
+
+
+def test_estmx001_has_values_for_every_placeholder_in_every_env():
+    config = load_env_params(_ENV_PARAMS_PATH)
+    template_text = _ESTMX001.read_text(encoding="utf-8")
+    for env in ("TU", "TI", "PRD"):
+        rendered = render(template_text, params_for(config, "ESTMX001", env))
+        assert "${" not in rendered
+        assert f"DSN=ESTM.POC.{env}.CLIENTES(+1)" in rendered
 
 
 def test_render_substitutes_placeholders():
