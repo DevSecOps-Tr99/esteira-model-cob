@@ -59,6 +59,8 @@ O teste `tests/test_proleap_client.py` é pulado automaticamente se `java`/`mvn`
 
 ## Documentação
 
+- [`docs/esteira-poc-como-funciona.md`](docs/esteira-poc-como-funciona.md) — **como a esteira da POC funciona**: diagrama de arquitetura (Excalidraw), componentes, fluxo, segurança e operação
+- [`docs/ambiente-poc-azure.md`](docs/ambiente-poc-azure.md) — referência do ambiente na Azure (Key Vault, SSH, variables e segredos)
 - [`docs/arquitetura.md`](docs/arquitetura.md) — visão geral e mapeamento esteira atual → nova esteira
 - [`docs/gates.md`](docs/gates.md) — os 3 gates e o JCL Governance Report
 - [`docs/seguranca.md`](docs/seguranca.md) — ferramentas de segurança avaliadas (ProLeap, Gitleaks, CodeQL, SonarQube, Veracode, IBM ZCodeScan)
